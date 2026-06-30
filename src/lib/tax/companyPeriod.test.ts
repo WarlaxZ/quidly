@@ -19,5 +19,6 @@ describe("companyAccountingPeriod", () => {
     expect(companyPeriodYearOf(new Date("2025-06-01"), 31, 12)).toBe(2025);
     expect(companyPeriodYearOf(new Date("2025-06-01"), 31, 3)).toBe(2026);
     expect(companyPeriodYearOf(new Date("2025-03-31"), 31, 3)).toBe(2025);
+    expect(companyPeriodYearOf(new Date("2025-12-31T14:00:00Z"), 31, 12)).toBe(2025); // time-of-day on year-end day stays in-period
   });
 });

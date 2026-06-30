@@ -54,6 +54,15 @@ describe("getCompanyReserves", () => {
       retainedEarningsPence: 0, unlawful: false,
     });
   });
+  it("returns zeros for a period earlier than the company's first activity", async () => {
+    const co = await setup(); // first activity is 2025
+    const r = await getCompanyReserves(co.id, 2024);
+    expect(r).not.toBeNull();
+    expect(r!.cumulativeProfitAfterTaxPence).toBe(0);
+    expect(r!.periodProfitAfterTaxPence).toBe(0);
+    expect(r!.cumulativeDividendsPence).toBe(0);
+    expect(r!.unlawful).toBe(false);
+  });
 });
 
 describe("getCompanyDividendTax", () => {

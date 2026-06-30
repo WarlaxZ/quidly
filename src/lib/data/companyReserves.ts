@@ -24,6 +24,7 @@ export async function getCompanyReserves(companyId: string, periodYear: number):
   const [firstTxn, firstDiv, dividendsToEnd, periodDividendAgg] = await Promise.all([
     prisma.transaction.findFirst({ where: { property: { companyId } }, orderBy: { date: "asc" }, select: { date: true } }),
     prisma.companyLedgerEntry.findFirst({ where: { companyId, kind: "dividend" }, orderBy: { date: "asc" }, select: { date: true } }),
+    // Cumulative dividends are summed up to the selected period end (not all-time).
     prisma.companyLedgerEntry.aggregate({ where: { companyId, kind: "dividend", date: { lte: end } }, _sum: { amountPence: true } }),
     prisma.companyLedgerEntry.aggregate({ where: { companyId, kind: "dividend", date: { gte: start, lte: end } }, _sum: { amountPence: true } }),
   ]);
@@ -32,6 +33,7 @@ export async function getCompanyReserves(companyId: string, periodYear: number):
   const periodDividendsPence = periodDividendAgg._sum.amountPence ?? 0;
 
   const earliestTimes = [firstTxn?.date.getTime(), firstDiv?.date.getTime()].filter((t): t is number => t !== undefined);
+  // No transactions and no dividends → no reserves. (If firstDiv is null there are no dividend rows, so cumulativeDividendsPence is 0 here.)
   if (earliestTimes.length === 0) {
     return {
       periodProfitAfterTaxPence: 0, periodDividendsPence, cumulativeProfitAfterTaxPence: 0,
@@ -44,6 +46,8 @@ export async function getCompanyReserves(companyId: string, periodYear: number):
 
   let cumulativeProfitAfterTaxPence = 0;
   let periodProfitAfterTaxPence = 0;
+  // O(periods) sequential getCompanyAccounts calls — fine for the 1–5 periods of a single-property company.
+  // CT is per-period, so each year's after-tax profit must be computed independently (not on aggregate profit).
   for (let y = firstYear; y <= periodYear; y++) {
     const acc = await getCompanyAccounts(companyId, y);
     const afterTax = acc?.profitAfterTaxPence ?? 0;
