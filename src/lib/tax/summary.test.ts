@@ -35,4 +35,38 @@ describe("buildTaxYearSummary", () => {
     expect(s.taxableProfitPence).toBe(11_000_00);
     expect(s.allowanceRecommended).toBe(false);
   });
+
+  it("taxableProfit is zero when income is at or below the £1,000 allowance (allowance opted in)", () => {
+    const s = buildTaxYearSummary(
+      [t({ amountPence: 80000, categoryKind: "income", direction: "in" })],
+      { taxYear: "2025-26", otherIncomePence: 0, region: "englandWalesNI", usePropertyAllowance: true },
+    );
+    expect(s.taxableProfitPence).toBe(0);
+    expect(s.allowanceRecommended).toBe(true);
+  });
+
+  it("taxableProfit, reducer and tax are zero in a loss year", () => {
+    const s = buildTaxYearSummary(
+      [
+        t({ amountPence: 5_000_00, categoryKind: "income", direction: "in" }),
+        t({ amountPence: 7_000_00, categoryKind: "expense", direction: "out" }),
+      ],
+      { taxYear: "2025-26", otherIncomePence: 0, region: "englandWalesNI", usePropertyAllowance: false },
+    );
+    expect(s.taxableProfitPence).toBe(0);
+    expect(s.financeReducerPence).toBe(0);
+    expect(s.estimatedTaxPence).toBe(0);
+  });
+
+  it("allowance reduces taxableProfit when it beats actual expenses", () => {
+    const s = buildTaxYearSummary(
+      [
+        t({ amountPence: 5_000_00, categoryKind: "income", direction: "in" }),
+        t({ amountPence: 50_00, categoryKind: "expense", direction: "out" }),
+      ],
+      { taxYear: "2025-26", otherIncomePence: 0, region: "englandWalesNI", usePropertyAllowance: true },
+    );
+    expect(s.taxableProfitPence).toBe(4_000_00); // 5000 income - 1000 allowance
+    expect(s.allowanceRecommended).toBe(true);   // allowance route (4000) beats expenses route (4950)
+  });
 });

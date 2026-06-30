@@ -10,4 +10,7 @@ describe("toCsv", () => {
     const csv = toCsv(["desc"], [{ desc: 'Rent, "June"' }]);
     expect(csv).toBe('desc\n"Rent, ""June"""');
   });
+  it("neutralises spreadsheet formula injection by prefixing a quote", () => {
+    expect(toCsv(["v"], [{ v: "=HYPERLINK(\"x\")" }])).toBe("v\n\"'=HYPERLINK(\"\"x\"\")\"");
+  });
 });
