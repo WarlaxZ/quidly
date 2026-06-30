@@ -21,6 +21,15 @@ describe("dividendTax (2025-26)", () => {
     expect(dividendTax(10_000_00, 45_000_00, "2025-26")).toBe(2_013_75);
   });
 
+  it("splits a dividend straddling the upper→additional threshold", () => {
+    // other 120,000 → PA fully tapered to 0; basic top = 37,700; additional starts at 125,140.
+    // dividend 10,000 sits 120,000→130,000. First 500 at 0% (in the upper band).
+    // 120,000→125,140 = 5,140; minus 500 allowance = 4,640 @ 33.75% = 1,566.00
+    // 125,140→130,000 = 4,860 @ 39.35% = 1,912.41
+    // total = 3,478.41
+    expect(dividendTax(10_000_00, 120_000_00, "2025-26")).toBe(3_478_41);
+  });
+
   it("taxes an additional-rate dividend at 39.35% (personal allowance fully tapered)", () => {
     // other 200,000 → PA 0; dividend all in additional band.
     // (10,000 - 500) * 39.35% = 3,738.25

@@ -25,6 +25,8 @@ const LATEST_YEAR = "2025-26";
 
 function effectivePersonalAllowance(totalIncomePence: number, r: DividendRates): number {
   if (totalIncomePence <= r.paTaperStartPence) return r.personalAllowancePence;
+  // Taper computed in pence (HMRC tapers in whole pounds); the ≤50p divergence only arises
+  // for non-whole-pound incomes and is immaterial for this estimation tool.
   const reduced = r.personalAllowancePence - Math.floor((totalIncomePence - r.paTaperStartPence) / 2);
   return Math.max(0, reduced);
 }
