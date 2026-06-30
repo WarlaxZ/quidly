@@ -1,4 +1,10 @@
+import Anthropic from "@anthropic-ai/sdk";
+import { getExtractionModel } from "./config";
 import { poundsToPence } from "../tax/money";
+
+export interface AnthropicLike {
+  messages: { create: (params: unknown) => Promise<{ content: Array<{ type: string; input?: unknown }> }> };
+}
 
 export interface CategoryRef {
   id: string;
@@ -48,4 +54,27 @@ export function parseExtraction(input: unknown, categories: CategoryRef[]): Extr
     categoryId: typeof o.categoryId === "string" && validIds.has(o.categoryId) ? o.categoryId : null,
     confidence: o.confidence === "high" || o.confidence === "medium" ? o.confidence : "low",
   };
+}
+
+export async function extractReceipt(bytes: Buffer, mimeType: string, categories: CategoryRef[], client?: AnthropicLike): Promise<Extraction> {
+  const c: AnthropicLike = client ?? (new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }) as unknown as AnthropicLike);
+  const tool = buildExtractionTool(categories);
+  const data = bytes.toString("base64");
+  const fileBlock =
+    mimeType === "application/pdf"
+      ? { type: "document", source: { type: "base64", media_type: "application/pdf", data } }
+      : { type: "image", source: { type: "base64", media_type: mimeType, data } };
+
+  const res = await c.messages.create({
+    model: getExtractionModel(),
+    max_tokens: 1024,
+    system: [{ type: "text", text: "You extract structured transaction data from UK receipts and invoices. Always call record_receipt. Dates as YYYY-MM-DD; amount is the total in pounds.", cache_control: { type: "ephemeral" } }],
+    tools: [{ ...tool, cache_control: { type: "ephemeral" } }],
+    tool_choice: { type: "tool", name: "record_receipt" },
+    messages: [{ role: "user", content: [fileBlock, { type: "text", text: "Extract the receipt details." }] }],
+  } as unknown as Anthropic.MessageCreateParams);
+
+  const toolUse = (res.content ?? []).find((b) => b.type === "tool_use");
+  if (!toolUse) throw new Error("The model did not return structured data — try a clearer image.");
+  return parseExtraction(toolUse.input, categories);
 }
