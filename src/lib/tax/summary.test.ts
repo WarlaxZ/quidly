@@ -69,4 +69,18 @@ describe("buildTaxYearSummary", () => {
     expect(s.taxableProfitPence).toBe(4_000_00); // 5000 income - 1000 allowance
     expect(s.allowanceRecommended).toBe(true);   // allowance route (4000) beats expenses route (4950)
   });
+
+  it("applies NO finance reducer when the £1,000 property allowance is elected", () => {
+    const txns: TaxTxn[] = [
+      { date: new Date("2025-06-01"), amountPence: 12_000_00, direction: "in", categoryKind: "income", allowable: true, sa105Box: "20" },
+      { date: new Date("2025-06-02"), amountPence: 5_000_00, direction: "out", categoryKind: "finance", allowable: true, sa105Box: "44" },
+    ];
+    const summary = buildTaxYearSummary(txns, {
+      taxYear: "2025-26",
+      otherIncomePence: 40_000_00,
+      region: "englandWalesNI",
+      usePropertyAllowance: true,
+    });
+    expect(summary.financeReducerPence).toBe(0);
+  });
 });

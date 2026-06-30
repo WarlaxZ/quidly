@@ -1,6 +1,6 @@
 import type { TaxTxn } from "./types";
 
-const PROPERTY_ALLOWANCE_PENCE = 1_000_00;
+export const PROPERTY_ALLOWANCE_PENCE = 1_000_00;
 
 export interface ProfitResult {
   incomePence: number;
