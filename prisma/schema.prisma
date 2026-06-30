@@ -149,10 +149,30 @@ model LoginAttempt {
 }
 
 model Company {
-  id                     String     @id @default(cuid())
+  id                     String               @id @default(cuid())
   name                   String
   accountingYearEndDay   Int
   accountingYearEndMonth Int
-  createdAt              DateTime   @default(now())
+  createdAt              DateTime             @default(now())
   properties             Property[]
+  ledgerEntries          CompanyLedgerEntry[]
+}
+
+enum CompanyLedgerKind {
+  dividend
+  director_loan_in
+  director_loan_out
+}
+
+model CompanyLedgerEntry {
+  id          String            @id @default(cuid())
+  companyId   String
+  company     Company           @relation(fields: [companyId], references: [id])
+  date        DateTime
+  kind        CompanyLedgerKind
+  amountPence Int
+  note        String?
+  createdAt   DateTime          @default(now())
+
+  @@index([companyId, date])
 }
