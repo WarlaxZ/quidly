@@ -1,12 +1,18 @@
 "use server";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { createTransaction, deleteTransaction } from "../../../lib/data/transactions";
 import { getOrCreateDefaultProperty } from "../../../lib/data/property";
 import { parseAmountToPence } from "../../../lib/money/parseAmount";
 import type { Direction } from "../../../lib/tax/types";
 export async function addTransactionAction(formData: FormData) {
   const property = await getOrCreateDefaultProperty();
-  const amountPence = parseAmountToPence(String(formData.get("amount") ?? ""));
+  let amountPence!: number;
+  try {
+    amountPence = parseAmountToPence(String(formData.get("amount") ?? ""));
+  } catch (e) {
+    redirect(`/transactions?error=${encodeURIComponent((e as Error).message)}`);
+  }
   await createTransaction({
     propertyId: property.id,
     categoryId: String(formData.get("categoryId")),
