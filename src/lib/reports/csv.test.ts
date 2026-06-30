@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { toCsv } from "./csv";
+import { parseCsv } from "./csv";
 
 describe("toCsv", () => {
   it("writes a header row and values", () => {
@@ -12,5 +13,21 @@ describe("toCsv", () => {
   });
   it("neutralises spreadsheet formula injection by prefixing a quote", () => {
     expect(toCsv(["v"], [{ v: "=HYPERLINK(\"x\")" }])).toBe("v\n\"'=HYPERLINK(\"\"x\"\")\"");
+  });
+});
+
+describe("parseCsv", () => {
+  it("parses a header and rows", () => {
+    const r = parseCsv("date,amount\n2025-06-01,950.00\n2025-06-02,-12.50");
+    expect(r.header).toEqual(["date", "amount"]);
+    expect(r.rows).toEqual([["2025-06-01", "950.00"], ["2025-06-02", "-12.50"]]);
+  });
+  it("handles quoted fields with commas, quotes and newlines", () => {
+    const r = parseCsv('desc,amount\n"Rent, ""June""",950\n"line1\nline2",5');
+    expect(r.rows[0]).toEqual(['Rent, "June"', "950"]);
+    expect(r.rows[1]).toEqual(["line1\nline2", "5"]);
+  });
+  it("ignores a trailing newline", () => {
+    expect(parseCsv("a,b\n1,2\n").rows).toEqual([["1", "2"]]);
   });
 });
