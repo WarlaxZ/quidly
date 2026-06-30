@@ -2,6 +2,7 @@ import "server-only";
 import { prisma } from "../db";
 import { taxYearRange } from "../tax/taxYear";
 import type { Direction } from "../tax/types";
+import { buildTransactionWhere, type TransactionFilter } from "./transactionFilter";
 
 export interface TransactionInput {
   propertyId: string;
@@ -33,4 +34,11 @@ export function updateTransaction(id: string, input: Partial<TransactionInput>) 
 }
 export function deleteTransaction(id: string) {
   return prisma.transaction.delete({ where: { id } });
+}
+export function listTransactionsFiltered(propertyId: string, filter: TransactionFilter) {
+  return prisma.transaction.findMany({
+    where: buildTransactionWhere(propertyId, filter),
+    orderBy: { date: "desc" },
+    include: { category: true, vendor: true },
+  });
 }

@@ -1,17 +1,19 @@
 import { listRecurringRules } from "../../../lib/data/recurring";
 import { getOrCreateDefaultProperty } from "../../../lib/data/property";
-import { prisma } from "../../../lib/db";
+import { listCategories } from "../../../lib/data/categories";
 import { formatGBP } from "../../../lib/tax/money";
 import { addRecurringAction, deleteRecurringAction, generateNowAction } from "./actions";
-export default async function RecurringPage() {
+export default async function RecurringPage({ searchParams }: { searchParams: Promise<{ generated?: string }> }) {
+  const { generated } = await searchParams;
   const property = await getOrCreateDefaultProperty();
   const [rules, categories] = await Promise.all([
     listRecurringRules(property.id),
-    prisma.category.findMany({ orderBy: { name: "asc" } }),
+    listCategories(),
   ]);
   return (
     <div className="max-w-4xl space-y-6">
       <h1 className="text-2xl font-semibold">Recurring payments</h1>
+      {generated !== undefined && <p className="text-green-700">Generated {generated} transaction(s).</p>}
       <form action={addRecurringAction} className="flex flex-wrap items-end gap-2">
         <input name="amount" placeholder="£ amount" required className="border px-2 py-1" />
         <select name="direction" className="border px-2 py-1">

@@ -40,6 +40,22 @@ describe("recurring data layer", () => {
     const refreshed = await prisma.recurringRule.findUniqueOrThrow({ where: { id: rule.id } });
     expect(refreshed.lastGeneratedDate?.toISOString().slice(0, 10)).toBe("2025-04-01");
   });
+  it("only materialises rules for the given property when propertyId is passed", async () => {
+    const p1 = await getOrCreateDefaultProperty();
+    const p2 = await prisma.property.create({ data: { name: "Second" } });
+    const categoryId = await rentCategoryId();
+    await createRecurringRule({
+      propertyId: p1.id, categoryId, amountPence: 1000, direction: "in",
+      frequency: "monthly", dayOfMonth: 1, startDate: new Date("2025-01-01"), endDate: null,
+    });
+    await createRecurringRule({
+      propertyId: p2.id, categoryId, amountPence: 2000, direction: "in",
+      frequency: "monthly", dayOfMonth: 1, startDate: new Date("2025-01-01"), endDate: null,
+    });
+    const created = await materialiseDue(new Date("2025-02-15"), p1.id);
+    expect(created).toBe(2); // only p1's two occurrences, NOT p2's
+    expect(await listTransactions(p2.id)).toHaveLength(0); // p2 untouched
+  });
   it("deletes a rule", async () => {
     const property = await getOrCreateDefaultProperty();
     const categoryId = await rentCategoryId();

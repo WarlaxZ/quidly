@@ -1,5 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { createRecurringRule, deleteRecurringRule, materialiseDue } from "../../../lib/data/recurring";
 import { getOrCreateDefaultProperty } from "../../../lib/data/property";
 import { parseAmountToPence } from "../../../lib/money/parseAmount";
@@ -25,7 +26,8 @@ export async function deleteRecurringAction(formData: FormData) {
   revalidatePath("/recurring");
 }
 export async function generateNowAction() {
-  await materialiseDue(new Date());
-  revalidatePath("/recurring");
+  const property = await getOrCreateDefaultProperty();
+  const count = await materialiseDue(new Date(), property.id);
   revalidatePath("/transactions");
+  redirect(`/recurring?generated=${count}`);
 }
