@@ -29,14 +29,14 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
       {sp.error && <p className="rounded bg-red-100 px-3 py-2 text-red-700">{sp.error}</p>}
       <form className="flex flex-wrap items-end gap-2">
         <input name="taxYear" placeholder="Tax year e.g. 2025-26" defaultValue={sp.taxYear ?? ""} className="border px-2 py-1" />
-        <select name="categoryId" className="border px-2 py-1">
+        <select name="categoryId" defaultValue={sp.categoryId ?? ""} className="border px-2 py-1">
           <option value="">All categories</option>
-          {categories.map((c) => <option key={c.id} value={c.id} selected={sp.categoryId === c.id}>{c.name}</option>)}
+          {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
-        <select name="direction" className="border px-2 py-1">
-          <option value="" selected={!sp.direction}>All</option>
-          <option value="in" selected={sp.direction === "in"}>In</option>
-          <option value="out" selected={sp.direction === "out"}>Out</option>
+        <select name="direction" defaultValue={sp.direction ?? ""} className="border px-2 py-1">
+          <option value="">All</option>
+          <option value="in">In</option>
+          <option value="out">Out</option>
         </select>
         <button type="submit" className="bg-gray-200 px-3 py-1">Filter</button>
       </form>
