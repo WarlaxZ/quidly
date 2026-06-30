@@ -2,13 +2,13 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createTransaction, deleteTransaction } from "../../../lib/data/transactions";
-import { getOrCreateDefaultProperty } from "../../../lib/data/property";
 import { parseAmountToPence } from "../../../lib/money/parseAmount";
 import type { Direction } from "../../../lib/tax/types";
 import { requireSession } from "../../../lib/auth/session";
 export async function addTransactionAction(formData: FormData) {
   await requireSession();
-  const property = await getOrCreateDefaultProperty();
+  const propertyId = String(formData.get("propertyId") ?? "");
+  if (!propertyId) redirect(`/transactions?error=${encodeURIComponent("Choose a property.")}`);
   let amountPence!: number;
   try {
     amountPence = parseAmountToPence(String(formData.get("amount") ?? ""));
@@ -16,7 +16,7 @@ export async function addTransactionAction(formData: FormData) {
     redirect(`/transactions?error=${encodeURIComponent((e as Error).message)}`);
   }
   await createTransaction({
-    propertyId: property.id,
+    propertyId,
     categoryId: String(formData.get("categoryId")),
     date: new Date(String(formData.get("date"))),
     amountPence,

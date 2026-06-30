@@ -1,11 +1,30 @@
-import { getOrCreateDefaultProperty } from "../../../lib/data/property";
+import { getActiveProperty } from "../../../lib/data/activeProperty";
+import { getProperty } from "../../../lib/data/property";
 import { savePropertyAction } from "./actions";
 export default async function SettingsPage() {
-  const property = await getOrCreateDefaultProperty();
+  const active = await getActiveProperty();
+  if (active.isAll || !active.propertyId) {
+    return (
+      <div className="max-w-xl space-y-6">
+        <h1 className="text-2xl font-semibold">Settings</h1>
+        <p className="text-gray-600">Select a single property in the switcher to edit its details, or add one on the Properties page.</p>
+      </div>
+    );
+  }
+  const property = await getProperty(active.propertyId);
+  if (!property) {
+    return (
+      <div className="max-w-xl space-y-6">
+        <h1 className="text-2xl font-semibold">Settings</h1>
+        <p className="text-gray-600">Select a single property in the switcher to edit its details, or add one on the Properties page.</p>
+      </div>
+    );
+  }
   return (
     <div className="max-w-xl space-y-6">
       <h1 className="text-2xl font-semibold">Settings</h1>
       <form action={savePropertyAction} className="space-y-3">
+        <input type="hidden" name="propertyId" value={property.id} />
         <label className="block">
           <span className="block text-sm">Property name</span>
           <input name="name" defaultValue={property.name} className="w-full border px-2 py-1" />

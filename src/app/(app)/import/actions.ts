@@ -2,17 +2,15 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireSession } from "../../../lib/auth/session";
-import { getOrCreateDefaultProperty } from "../../../lib/data/property";
 import { listTransactions, bulkCreateTransactions } from "../../../lib/data/transactions";
 import { parseCsv } from "../../../lib/reports/csv";
 import { mapImportRow, isDuplicate, type ColumnMapping } from "../../../lib/import/bankImport";
 
 export interface PreviewRow { ok: boolean; date?: string; direction?: string; amountPence?: number; description?: string; error?: string; duplicate?: boolean; }
 
-export async function buildPreview(csvText: string, mapping: ColumnMapping): Promise<PreviewRow[]> {
+export async function buildPreview(csvText: string, mapping: ColumnMapping, propertyId: string): Promise<PreviewRow[]> {
   await requireSession();
-  const property = await getOrCreateDefaultProperty();
-  const existing = await listTransactions(property.id);
+  const existing = await listTransactions(propertyId);
   const { rows } = parseCsv(csvText);
   return rows.map((row) => {
     try {
@@ -28,20 +26,21 @@ export async function confirmImportAction(formData: FormData) {
   await requireSession();
   const csvText = String(formData.get("csv") ?? "");
   const categoryId = String(formData.get("categoryId"));
+  const propertyId = String(formData.get("propertyId") ?? "");
+  if (!propertyId) redirect(`/import?error=${encodeURIComponent("Choose a property.")}`);
   const mapping: ColumnMapping = {
     dateCol: Number(formData.get("dateCol")),
     amountCol: Number(formData.get("amountCol")),
     descriptionCol: Number(formData.get("descriptionCol")),
   };
-  const property = await getOrCreateDefaultProperty();
-  const existing = await listTransactions(property.id);
+  const existing = await listTransactions(propertyId);
   const { rows } = parseCsv(csvText);
   const toCreate = [];
   for (const row of rows) {
     let m;
     try { m = mapImportRow(row, mapping); } catch { continue; }
     if (isDuplicate(m, existing)) continue;
-    toCreate.push({ propertyId: property.id, categoryId, date: m.date, amountPence: m.amountPence, direction: m.direction, description: m.description });
+    toCreate.push({ propertyId, categoryId, date: m.date, amountPence: m.amountPence, direction: m.direction, description: m.description });
   }
   await bulkCreateTransactions(toCreate);
   revalidatePath("/transactions");
