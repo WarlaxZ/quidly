@@ -15,4 +15,8 @@ describe("buildTransactionWhere", () => {
     expect((where.date as { gte: Date }).gte.toISOString().slice(0, 10)).toBe("2025-04-06");
     expect((where.date as { lt: Date }).lt.toISOString().slice(0, 10)).toBe("2026-04-06");
   });
+  it("omits the property scope when propertyId is null (all properties)", () => {
+    const where = buildTransactionWhere(null, { direction: "out" });
+    expect(where).toEqual({ direction: "out" });
+  });
 });
