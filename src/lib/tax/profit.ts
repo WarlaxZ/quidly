@@ -49,5 +49,5 @@ export function propertyAllowanceAdvice(
  */
 export function financeCostReducer(financeCostsPence: number, profitPence: number): number {
   const base = Math.max(0, Math.min(financeCostsPence, profitPence));
-  return Math.round(base * 0.2);
+  return Math.round(base * 2000 / 10000); // 2000 bps = 20% Section-24 basic-rate reducer
 }

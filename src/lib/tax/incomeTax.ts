@@ -15,20 +15,20 @@ export function incomeTaxOn(totalIncomePence: number, taxYear: string, region: R
 
   const cap = Math.max(0, bands.topThresholdPence - pa);
   let remaining = Math.min(taxable, cap);
-  let tax = 0;
+  let taxNumerator = 0; // sum of (taxable pence × basis points); divided by 10,000 once at the end
 
   for (const band of bands.bands) {
     if (remaining <= 0) break;
     const width = band.widthPence ?? remaining;
     const slice = Math.min(remaining, width);
-    tax += slice * band.rate;
+    taxNumerator += slice * band.rateBps;
     remaining -= slice;
   }
 
   const aboveCap = Math.max(0, taxable - cap);
-  tax += aboveCap * bands.topRate;
+  taxNumerator += aboveCap * bands.topRateBps;
 
-  return Math.round(tax);
+  return Math.round(taxNumerator / 10000);
 }
 
 export interface PropertyTaxInput {

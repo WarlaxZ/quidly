@@ -3,7 +3,8 @@ import type { Region } from "./types";
 export interface TaxBand {
   /** Width of this band in taxable income (pence), above the personal allowance. null = fills to the top threshold. */
   widthPence: number | null;
-  rate: number;
+  /** Marginal rate in basis points (2000 = 20%). */
+  rateBps: number;
 }
 
 export interface TaxBands {
@@ -11,7 +12,8 @@ export interface TaxBands {
   paTaperStartPence: number;
   /** Gross income at which the personal allowance reaches zero and the top rate begins. */
   topThresholdPence: number;
-  topRate: number;
+  /** Top rate in basis points (4500 = 45%). */
+  topRateBps: number;
   /** Ordered bands below the top rate; the final band must have widthPence: null. */
   bands: TaxBand[];
 }
@@ -20,10 +22,10 @@ const ENGLAND_WALES_NI_2025_26: TaxBands = {
   personalAllowancePence: 12_570_00,
   paTaperStartPence: 100_000_00,
   topThresholdPence: 125_140_00,
-  topRate: 0.45,
+  topRateBps: 4500,
   bands: [
-    { widthPence: 37_700_00, rate: 0.2 },
-    { widthPence: null, rate: 0.4 },
+    { widthPence: 37_700_00, rateBps: 2000 },
+    { widthPence: null, rateBps: 4000 },
   ],
 };
 
@@ -31,13 +33,13 @@ const SCOTLAND_2025_26: TaxBands = {
   personalAllowancePence: 12_570_00,
   paTaperStartPence: 100_000_00,
   topThresholdPence: 125_140_00,
-  topRate: 0.48,
+  topRateBps: 4800,
   bands: [
-    { widthPence: 2_306_00, rate: 0.19 },
-    { widthPence: 11_685_00, rate: 0.2 },
-    { widthPence: 17_101_00, rate: 0.21 },
-    { widthPence: 31_338_00, rate: 0.42 },
-    { widthPence: null, rate: 0.45 }, // advanced (fills to top threshold)
+    { widthPence: 2_306_00, rateBps: 1900 },
+    { widthPence: 11_685_00, rateBps: 2000 },
+    { widthPence: 17_101_00, rateBps: 2100 },
+    { widthPence: 31_338_00, rateBps: 4200 },
+    { widthPence: null, rateBps: 4500 }, // advanced 45% (fills to topThresholdPence; 48% top rate applies above it)
   ],
 };
 

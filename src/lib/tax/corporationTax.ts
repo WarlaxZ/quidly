@@ -20,17 +20,17 @@ export function companyTaxableProfit(txns: TaxTxn[]): CompanyProfit {
 export interface CTRates {
   lowerLimitPence: number;
   upperLimitPence: number;
-  smallRate: number;
-  mainRate: number;
-  marginalFraction: number;
+  smallBps: number;             // basis points (1900 = 19%)
+  mainBps: number;              // basis points (2500 = 25%)
+  marginalFractionBps: number;  // basis points: 150 = 1.5% (the 3/200 marginal-relief fraction)
 }
 
 const CT_2025_26: CTRates = {
   lowerLimitPence: 50_000_00,
   upperLimitPence: 250_000_00,
-  smallRate: 0.19,
-  mainRate: 0.25,
-  marginalFraction: 3 / 200,
+  smallBps: 1900,
+  mainBps: 2500,
+  marginalFractionBps: 150,
 };
 
 const CT_RATES: Record<string, CTRates> = { "2025-26": CT_2025_26 };
@@ -53,13 +53,13 @@ export function corporationTax(profitPence: number, year: string = LATEST_CT_YEA
   let taxPence: number;
   let band: "small" | "marginal" | "main";
   if (profitPence <= r.lowerLimitPence) {
-    taxPence = Math.round(profitPence * r.smallRate);
+    taxPence = Math.round(profitPence * r.smallBps / 10000);
     band = "small";
   } else if (profitPence >= r.upperLimitPence) {
-    taxPence = Math.round(profitPence * r.mainRate);
+    taxPence = Math.round(profitPence * r.mainBps / 10000);
     band = "main";
   } else {
-    taxPence = Math.round(profitPence * r.mainRate - (r.upperLimitPence - profitPence) * r.marginalFraction);
+    taxPence = Math.round((profitPence * r.mainBps - (r.upperLimitPence - profitPence) * r.marginalFractionBps) / 10000);
     band = "marginal";
   }
   return { taxPence, effectiveRate: taxPence / profitPence, band };
