@@ -22,7 +22,7 @@ export interface CTRates {
   upperLimitPence: number;
   smallBps: number;             // basis points (1900 = 19%)
   mainBps: number;              // basis points (2500 = 25%)
-  marginalFractionBps: number;  // basis points (150 = 3/200 = 1.5%)
+  marginalFractionBps: number;  // basis points: 150 = 1.5% (the 3/200 marginal-relief fraction)
 }
 
 const CT_2025_26: CTRates = {

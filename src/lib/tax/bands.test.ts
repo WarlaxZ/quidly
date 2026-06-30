@@ -12,7 +12,7 @@ describe("getBands", () => {
       { widthPence: null, rateBps: 4000 },
     ]);
   });
-  it("returns 2025-26 Scotland bands (5 bands + topRate)", () => {
+  it("returns 2025-26 Scotland bands (5 bands + topRateBps)", () => {
     const b = getBands("2025-26", "scotland");
     expect(b.bands).toHaveLength(5);
     expect(b.topRateBps).toBe(4800);
