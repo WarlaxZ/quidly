@@ -41,7 +41,9 @@ export function dividendTax(dividendPence: number, otherIncomePence: number, tax
   const r = DIVIDEND_RATES[taxYear] ?? DIVIDEND_RATES[LATEST_YEAR];
   const total = otherIncomePence + dividendPence;
   const pa = effectivePersonalAllowance(total, r);
-  const basicTop = pa + r.basicLimitPence;   // total-income boundary: ordinary → upper
+  const basicTop = pa + r.basicLimitPence;   // total-income boundary: ordinary → upper (PA-relative)
+  // addStart is an ABSOLUTE total-income figure (not PA-relative); valid because the personal
+  // allowance is already fully tapered to £0 well before £125,140.
   const addStart = r.additionalStartPence;   // total-income boundary: upper → additional
 
   // The taxable dividend is the part of [otherIncome, total] above the personal allowance.

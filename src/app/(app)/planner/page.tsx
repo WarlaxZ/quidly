@@ -57,6 +57,13 @@ export default async function PlannerPage({ searchParams }: { searchParams: Prom
         pre-filled from your records — change any of them to test a different scenario.
       </p>
 
+      {personalProperties.length === 0 && (
+        <p className="rounded bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          No properties yet — add one and record some transactions to pre-fill these figures from your
+          records, or just type numbers below to explore scenarios.
+        </p>
+      )}
+
       <form method="get" className="grid grid-cols-2 gap-3 rounded border p-4 md:grid-cols-3">
         <label className="block">
           <span className="block text-sm">Tax year</span>
@@ -120,7 +127,9 @@ export default async function PlannerPage({ searchParams }: { searchParams: Prom
       <p className="text-xs text-gray-400">
         Estimate only — not tax advice. It compares tax alone and ignores incorporation costs, capital
         gains tax and stamp duty on transferring a property into a company, typically higher company
-        mortgage rates, and accountancy fees. Talk to an accountant before deciding.
+        mortgage rates, and accountancy fees. Tax rates are the latest year configured in the app
+        (currently 2025/26); other tax years are estimated using those rates. Talk to an accountant
+        before deciding.
       </p>
     </div>
   );
