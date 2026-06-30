@@ -2,10 +2,7 @@ import { NextResponse } from "next/server";
 import { getIronSession } from "iron-session";
 import { attemptLogin } from "../../../lib/auth/login";
 import { sessionOptions, type SessionData } from "../../../lib/auth/session-config";
-
-function safePath(next: string): string {
-  return next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
-}
+import { safePath } from "../../../lib/auth/safePath";
 
 export async function POST(request: Request) {
   const form = await request.formData();
