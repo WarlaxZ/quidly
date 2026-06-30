@@ -32,7 +32,11 @@ export function buildTaxYearSummary(txns: TaxTxn[], profile: SummaryProfile): Ta
   const taxableProfitPence = profile.usePropertyAllowance
     ? Math.max(0, incomePence - PROPERTY_ALLOWANCE_PENCE)
     : Math.max(0, profitPence);
-  const financeReducerPence = financeCostReducer(financeCostsPence, taxableProfitPence);
+  // The £1,000 property allowance is in lieu of ALL actual costs, including finance costs,
+  // so the Section-24 finance reducer does not apply when the allowance is elected.
+  const financeReducerPence = profile.usePropertyAllowance
+    ? 0
+    : financeCostReducer(financeCostsPence, taxableProfitPence);
   const { taxOnPropertyPence, marginalRate } = estimatePropertyTax({
     otherIncomePence: profile.otherIncomePence,
     taxableProfitPence,
