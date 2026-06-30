@@ -74,6 +74,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
               <td className="px-2 py-1">{t.description ?? ""}</td>
               <td className="px-2 py-1 text-right">{t.direction === "out" ? "−" : ""}{formatGBP(t.amountPence)}</td>
               <td className="px-2 py-1 text-right">
+                <a href={`/transactions/${t.id}/edit`} className="mr-2 text-blue-600 hover:underline">Edit</a>
                 <form action={deleteTransactionAction}>
                   <input type="hidden" name="id" value={t.id} />
                   <button type="submit" className="text-red-600">×</button>
