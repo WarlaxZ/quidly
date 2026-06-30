@@ -41,7 +41,7 @@ describe("recurringOccurrences", () => {
       { frequency: "monthly", dayOfMonth: 1, startDate: new Date("2025-01-15"), endDate: null, lastGeneratedDate: null },
       new Date("2025-03-10"),
     );
-    expect(dates.map((d) => d.toISOString().slice(0, 10))).toEqual(["2025-02-01", "2025-03-01"]);
+    expect(dates.map(iso)).toEqual(["2025-02-01", "2025-03-01"]);
   });
   it("returns nothing when lastGeneratedDate is at or after asOf", () => {
     const dates = recurringOccurrences(
