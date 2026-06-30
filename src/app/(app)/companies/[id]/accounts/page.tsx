@@ -7,7 +7,11 @@ import { formatGBP, poundsToPence } from "../../../../../lib/tax/money";
 export default async function CompanyAccountsPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ year?: string; interestPaid?: string }> }) {
   const { id } = await params;
   const { year, interestPaid } = await searchParams;
-  const periodYear = year && !Number.isNaN(Number(year)) ? Number(year) : new Date().getUTCFullYear();
+  // Clamp to a sane window: periodYear drives a per-period loop in getCompanyReserves,
+  // so an unbounded ?year (e.g. 9999999) must not trigger millions of queries.
+  const currentYear = new Date().getUTCFullYear();
+  const rawYear = year && !Number.isNaN(Number(year)) ? Number(year) : currentYear;
+  const periodYear = Math.min(Math.max(rawYear, 2000), currentYear + 1);
   const interestPaidPence = interestPaid && Number.isFinite(Number(interestPaid)) && Number(interestPaid) >= 0 ? poundsToPence(Number(interestPaid)) : 0;
 
   const accounts = await getCompanyAccounts(id, periodYear);

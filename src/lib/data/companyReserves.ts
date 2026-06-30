@@ -37,7 +37,7 @@ export async function getCompanyReserves(companyId: string, periodYear: number):
   if (earliestTimes.length === 0) {
     return {
       periodProfitAfterTaxPence: 0, periodDividendsPence, cumulativeProfitAfterTaxPence: 0,
-      cumulativeDividendsPence, retainedEarningsPence: -(cumulativeDividendsPence) || 0, unlawful: cumulativeDividendsPence > 0,
+      cumulativeDividendsPence, retainedEarningsPence: 0, unlawful: false,
     };
   }
 

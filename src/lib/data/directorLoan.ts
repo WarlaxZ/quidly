@@ -29,6 +29,8 @@ export async function getDirectorLoanSummary(
 
   const balancePence = directorLoanBalance(entries, end);
   const taxYear = getTaxYear(end);
+  // s455 is a corporation-tax charge on the accounting-period balance; v1 keys its rate by the
+  // tax year containing the period end (immaterial while only one rate year is configured).
   const s455Pence = s455Charge(balancePence, taxYear);
 
   const ty = taxYearRange(taxYear);
