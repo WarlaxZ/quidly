@@ -14,10 +14,11 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   if (!attachment) return new Response("Not found", { status: 404 });
   try {
     const bytes = await readFile(attachment.filePath);
+    const safeName = attachment.originalName.replace(/["\r\n]/g, "_");
     return new Response(bytes, {
       headers: {
         "Content-Type": mimeFor(attachment.filePath),
-        "Content-Disposition": `inline; filename="${attachment.originalName}"`,
+        "Content-Disposition": `inline; filename="${safeName}"`,
       },
     });
   } catch {

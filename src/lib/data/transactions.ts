@@ -13,6 +13,7 @@ export interface TransactionInput {
   vendorId?: string | null;
   description?: string | null;
   attachmentId?: string | null;
+  source?: "manual" | "recurring" | "imported";
 }
 export function listTransactions(propertyId: string) {
   return prisma.transaction.findMany({

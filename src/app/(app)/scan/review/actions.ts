@@ -26,6 +26,7 @@ export async function confirmScanAction(formData: FormData) {
     vendorId: String(formData.get("vendorId") ?? "") || null,
     description: String(formData.get("description") ?? "") || null,
     attachmentId,
+    source: "imported",
   });
   revalidatePath("/transactions");
   redirect("/transactions");

@@ -1,5 +1,6 @@
 "use server";
 import { redirect } from "next/navigation";
+import { rm } from "node:fs/promises";
 import { requireSession } from "../../../lib/auth/session";
 import { isExtractionEnabled } from "../../../lib/extraction/config";
 import { saveUpload, validateUpload } from "../../../lib/storage/files";
@@ -16,16 +17,18 @@ export async function uploadReceiptAction(formData: FormData) {
   }
   const f = file as File;
   let attachmentId!: string;
+  let savedPath: string | null = null;
   try {
     validateUpload(f.type, f.size);
     const bytes = Buffer.from(await f.arrayBuffer());
     const categories = (await listCategories()).map((c) => ({ id: c.id, name: c.name }));
     const extraction = await extractReceipt(bytes, f.type, categories);
     const saved = await saveUpload(bytes, f.name, f.type);
+    savedPath = saved.filePath;
     const attachment = await createAttachment({ filePath: saved.filePath, originalName: saved.originalName, extractedData: JSON.stringify(extraction) });
     attachmentId = attachment.id;
   } catch (e) {
-    // Friendly message; never include secrets (SDK errors don't contain the key).
+    if (savedPath) { try { await rm(savedPath, { force: true }); } catch { /* best effort */ } }
     redirect(`/scan?error=${encodeURIComponent((e as Error).message || "Couldn't read that receipt.")}`);
   }
   redirect(`/scan/review?attachmentId=${attachmentId}`);
