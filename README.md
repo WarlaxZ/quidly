@@ -24,6 +24,11 @@ npm test
 This app requires a single username/password login.
 
 1. Set credentials: `npm run set-password` and copy the printed lines into `.env`.
+
+> In a `.env` file the hash's `$` characters must be backslash-escaped (`npm run set-password`
+> prints the escaped line ready to paste). If you set `AUTH_PASSWORD_HASH` as a real environment
+> variable (Docker, systemd), use the unescaped hash the command also prints.
+
 2. Set a long `SESSION_SECRET` (e.g. `openssl rand -base64 32`).
 
 **Run it behind HTTPS.** Session cookies use the `Secure` flag in production, so the

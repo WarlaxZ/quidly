@@ -32,9 +32,14 @@ async function main() {
     process.exit(1);
   }
   const hash = await hashPassword(password);
+  const escapedForDotenv = hash.replace(/\$/g, "\\$");
   console.log("\nAdd these to your .env (and keep them secret):\n");
   console.log(`AUTH_USERNAME=${username}`);
-  console.log(`AUTH_PASSWORD_HASH=${hash}`);
+  console.log(`AUTH_PASSWORD_HASH=${escapedForDotenv}`);
+  console.log(`\n(The backslashes before $ are required so Next.js's .env loader doesn't`);
+  console.log(` treat the hash as variable references. If you instead set AUTH_PASSWORD_HASH`);
+  console.log(` as a real environment variable, e.g. in Docker/systemd, use the UNescaped hash:`);
+  console.log(`   ${hash})`);
   console.log(`\nAlso set a long SESSION_SECRET (32+ chars), e.g.:`);
   console.log(`SESSION_SECRET=$(openssl rand -base64 32)\n`);
 }
