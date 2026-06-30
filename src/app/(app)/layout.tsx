@@ -16,6 +16,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         {NAV.map((n) => (
           <Link key={n.href} href={n.href} className="text-blue-600 hover:underline">{n.label}</Link>
         ))}
+        <form method="post" action="/api/logout" className="ml-auto">
+          <button type="submit" className="text-gray-600 hover:underline">Log out</button>
+        </form>
       </nav>
       <main className="p-6">{children}</main>
     </div>

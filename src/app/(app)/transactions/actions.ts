@@ -5,7 +5,9 @@ import { createTransaction, deleteTransaction } from "../../../lib/data/transact
 import { getOrCreateDefaultProperty } from "../../../lib/data/property";
 import { parseAmountToPence } from "../../../lib/money/parseAmount";
 import type { Direction } from "../../../lib/tax/types";
+import { requireSession } from "../../../lib/auth/session";
 export async function addTransactionAction(formData: FormData) {
+  await requireSession();
   const property = await getOrCreateDefaultProperty();
   let amountPence!: number;
   try {
@@ -25,6 +27,7 @@ export async function addTransactionAction(formData: FormData) {
   revalidatePath("/transactions");
 }
 export async function deleteTransactionAction(formData: FormData) {
+  await requireSession();
   const id = String(formData.get("id") ?? "");
   if (id) await deleteTransaction(id);
   revalidatePath("/transactions");

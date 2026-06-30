@@ -18,3 +18,22 @@ npm run dev
 ```bash
 npm test
 ```
+
+## Authentication
+
+This app requires a single username/password login.
+
+1. Set credentials: `npm run set-password` and copy the printed lines into `.env`.
+
+> In a `.env` file the hash's `$` characters must be backslash-escaped (`npm run set-password`
+> prints the escaped line ready to paste). If you set `AUTH_PASSWORD_HASH` as a real environment
+> variable (Docker, systemd), use the unescaped hash the command also prints.
+
+2. Set a long `SESSION_SECRET` (e.g. `openssl rand -base64 32`).
+
+**Run it behind HTTPS.** Session cookies use the `Secure` flag in production, so the
+app must be served over TLS (e.g. behind Caddy, nginx, or Cloudflare). Over plain HTTP
+in production the session cookie will not be set and login will appear to fail.
+
+After 5 failed logins within 15 minutes, login is locked for 15 minutes (a deliberate
+single-account safeguard).

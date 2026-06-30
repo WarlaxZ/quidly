@@ -14,7 +14,7 @@ export default defineConfig({
     include: ["src/**/*.test.ts"],
     environment: "node",
     globalSetup: ["./test/setup/globalSetup.ts"],
-    env: { DATABASE_URL: "file:./test.db" },
+    env: { DATABASE_URL: "file:./test.db", SESSION_SECRET: "test-session-secret-at-least-32-characters-long" },
     fileParallelism: false,
   },
 });
