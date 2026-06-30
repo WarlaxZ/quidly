@@ -15,5 +15,6 @@ export default defineConfig({
     environment: "node",
     globalSetup: ["./test/setup/globalSetup.ts"],
     env: { DATABASE_URL: "file:./test.db" },
+    fileParallelism: false,
   },
 });
