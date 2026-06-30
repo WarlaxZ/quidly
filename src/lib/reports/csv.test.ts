@@ -30,4 +30,7 @@ describe("parseCsv", () => {
   it("ignores a trailing newline", () => {
     expect(parseCsv("a,b\n1,2\n").rows).toEqual([["1", "2"]]);
   });
+  it("strips a leading UTF-8 BOM from the first header", () => {
+    expect(parseCsv("﻿date,amount\n1,2").header).toEqual(["date", "amount"]);
+  });
 });

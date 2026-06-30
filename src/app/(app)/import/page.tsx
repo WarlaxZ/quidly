@@ -18,6 +18,9 @@ export default async function ImportPage({ searchParams }: { searchParams: Promi
           <textarea name="csv" rows={10} required className="w-full border p-2 font-mono text-xs" placeholder="date,amount,description&#10;01/06/2025,950.00,Rent" />
           <button type="submit" className="bg-blue-600 px-3 py-1 text-white">Next: map columns</button>
         </form>
+        <p className="text-xs text-gray-500">
+          v1 limitations: dates must be DD/MM/YYYY or YYYY-MM-DD; the amount column must use a leading minus or parentheses for outgoings (trailing-minus and separate debit/credit columns aren&apos;t supported yet). For very large statements, import in batches.
+        </p>
       </div>
     );
   }

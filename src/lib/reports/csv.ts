@@ -4,6 +4,7 @@ export interface ParsedCsv {
 }
 
 export function parseCsv(text: string): ParsedCsv {
+  text = text.replace(/^﻿/, "");
   const records: string[][] = [];
   let field = "";
   let row: string[] = [];

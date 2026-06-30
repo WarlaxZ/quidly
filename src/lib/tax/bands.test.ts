@@ -21,4 +21,10 @@ describe("getBands", () => {
   it("falls back to the latest year and EWNI", () => {
     expect(() => getBands("2099-00", "englandWalesNI")).not.toThrow();
   });
+  it("both configured regions end with a null-width fill band (invariant)", () => {
+    for (const region of ["englandWalesNI", "scotland"] as const) {
+      const b = getBands("2025-26", region);
+      expect(b.bands[b.bands.length - 1].widthPence).toBeNull();
+    }
+  });
 });

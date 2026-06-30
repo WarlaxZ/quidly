@@ -10,6 +10,7 @@ import { mapImportRow, isDuplicate, type ColumnMapping } from "../../../lib/impo
 export interface PreviewRow { ok: boolean; date?: string; direction?: string; amountPence?: number; description?: string; error?: string; duplicate?: boolean; }
 
 export async function buildPreview(csvText: string, mapping: ColumnMapping): Promise<PreviewRow[]> {
+  await requireSession();
   const property = await getOrCreateDefaultProperty();
   const existing = await listTransactions(property.id);
   const { rows } = parseCsv(csvText);
