@@ -136,3 +136,12 @@ model TaxYearProfile {
   basis                Basis   @default(cash)
   usePropertyAllowance Boolean @default(false)
 }
+
+model LoginAttempt {
+  id        String   @id @default(cuid())
+  ip        String?
+  outcome   String   // "success" | "failure"
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
