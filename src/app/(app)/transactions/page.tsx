@@ -1,4 +1,4 @@
-import { listTransactions, listTransactionsFiltered } from "../../../lib/data/transactions";
+import { listTransactionsFiltered } from "../../../lib/data/transactions";
 import { getOrCreateDefaultProperty } from "../../../lib/data/property";
 import { listVendors } from "../../../lib/data/vendors";
 import { listCategories } from "../../../lib/data/categories";
