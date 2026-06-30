@@ -12,9 +12,11 @@ export default async function CompanyAccountsPage({ params, searchParams }: { pa
 
   const accounts = await getCompanyAccounts(id, periodYear);
   if (!accounts) notFound();
-  const reserves = await getCompanyReserves(id, periodYear);
-  const dividendTax = await getCompanyDividendTax(id);
-  const loan = await getDirectorLoanSummary(id, periodYear, interestPaidPence);
+  const [reserves, dividendTax, loan] = await Promise.all([
+    getCompanyReserves(id, periodYear),
+    getCompanyDividendTax(id),
+    getDirectorLoanSummary(id, periodYear, interestPaidPence),
+  ]);
 
   const iso = (d: Date) => d.toISOString().slice(0, 10);
   const Row = ({ label, pence, bold }: { label: string; pence: number; bold?: boolean }) => (
@@ -85,7 +87,7 @@ export default async function CompanyAccountsPage({ params, searchParams }: { pa
         </section>
       )}
 
-      {loan && (
+      {loan && (loan.balancePence !== 0 || loan.bik.applies) && (
         <section className="space-y-2">
           <h2 className="text-lg font-semibold">Director&apos;s loan account</h2>
           <table className="w-full border">
@@ -106,7 +108,7 @@ export default async function CompanyAccountsPage({ params, searchParams }: { pa
             <input type="hidden" name="year" value={periodYear} />
             <label>
               <span className="block">Interest the director paid this year (£)</span>
-              <input name="interestPaid" defaultValue={interestPaidPence ? interestPaidPence / 100 : ""} className="border px-2 py-1" />
+              <input name="interestPaid" defaultValue={interestPaid ?? ""} className="border px-2 py-1" />
             </label>
             <button type="submit" className="bg-blue-600 px-3 py-1 text-white">Recalculate</button>
           </form>
