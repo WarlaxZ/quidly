@@ -1,19 +1,45 @@
-import { listTransactions } from "../../../lib/data/transactions";
+import { listTransactions, listTransactionsFiltered } from "../../../lib/data/transactions";
 import { getOrCreateDefaultProperty } from "../../../lib/data/property";
 import { listVendors } from "../../../lib/data/vendors";
 import { listCategories } from "../../../lib/data/categories";
 import { formatGBP } from "../../../lib/tax/money";
 import { addTransactionAction, deleteTransactionAction } from "./actions";
-export default async function TransactionsPage() {
+export default async function TransactionsPage({ searchParams }: { searchParams: Promise<{ taxYear?: string; categoryId?: string; direction?: string; error?: string }> }) {
+  const sp = await searchParams;
   const property = await getOrCreateDefaultProperty();
+  const filter = {
+    taxYear: sp.taxYear || undefined,
+    categoryId: sp.categoryId || undefined,
+    direction: (sp.direction as "in" | "out") || undefined,
+  };
   const [txns, categories, vendors] = await Promise.all([
-    listTransactions(property.id),
+    listTransactionsFiltered(property.id, filter),
     listCategories(),
     listVendors(),
   ]);
+  const exportQuery = new URLSearchParams(
+    Object.entries({ taxYear: sp.taxYear, categoryId: sp.categoryId, direction: sp.direction }).filter(([, v]) => v) as [string, string][]
+  ).toString();
   return (
     <div className="max-w-4xl space-y-6">
-      <h1 className="text-2xl font-semibold">Transactions — {property.name}</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Transactions — {property.name}</h1>
+        <a href={`/export/transactions${exportQuery ? `?${exportQuery}` : ""}`} className="text-blue-600 hover:underline">Export CSV</a>
+      </div>
+      {sp.error && <p className="rounded bg-red-100 px-3 py-2 text-red-700">{sp.error}</p>}
+      <form className="flex flex-wrap items-end gap-2">
+        <input name="taxYear" placeholder="Tax year e.g. 2025-26" defaultValue={sp.taxYear ?? ""} className="border px-2 py-1" />
+        <select name="categoryId" className="border px-2 py-1">
+          <option value="">All categories</option>
+          {categories.map((c) => <option key={c.id} value={c.id} selected={sp.categoryId === c.id}>{c.name}</option>)}
+        </select>
+        <select name="direction" className="border px-2 py-1">
+          <option value="" selected={!sp.direction}>All</option>
+          <option value="in" selected={sp.direction === "in"}>In</option>
+          <option value="out" selected={sp.direction === "out"}>Out</option>
+        </select>
+        <button type="submit" className="bg-gray-200 px-3 py-1">Filter</button>
+      </form>
       <form action={addTransactionAction} className="flex flex-wrap items-end gap-2">
         <input type="date" name="date" required className="border px-2 py-1" />
         <input name="amount" placeholder="£ amount" required className="border px-2 py-1" />
