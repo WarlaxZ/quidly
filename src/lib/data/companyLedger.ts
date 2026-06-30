@@ -29,6 +29,7 @@ export function createLedgerEntry(input: LedgerEntryInput) {
   });
 }
 
-export function deleteLedgerEntry(id: string) {
-  return prisma.companyLedgerEntry.delete({ where: { id } });
+export async function deleteLedgerEntry(id: string, companyId: string) {
+  // Scoped by companyId so an entry id alone can't delete another company's record.
+  await prisma.companyLedgerEntry.deleteMany({ where: { id, companyId } });
 }

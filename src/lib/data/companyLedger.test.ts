@@ -18,7 +18,7 @@ describe("companyLedger CRUD", () => {
     expect(rows).toHaveLength(2);
     expect(rows[0].kind).toBe("dividend"); // 2025-09-01 is newer than 2025-02-01
     expect(rows[0].amountPence).toBe(5_000_00);
-    await deleteLedgerEntry(rows[1].id);
+    await deleteLedgerEntry(rows[1].id, co.id);
     expect(await listLedgerEntries(co.id)).toHaveLength(1);
   });
 

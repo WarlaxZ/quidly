@@ -36,11 +36,11 @@ export default async function CompanyLedgerPage({ params, searchParams }: { para
         </label>
         <label className="block">
           <span className="block text-sm">Date</span>
-          <input type="date" name="date" className="w-full border px-2 py-1" />
+          <input type="date" name="date" required className="w-full border px-2 py-1" />
         </label>
         <label className="block">
           <span className="block text-sm">Amount (£)</span>
-          <input name="amount" className="w-full border px-2 py-1" />
+          <input name="amount" required className="w-full border px-2 py-1" />
         </label>
         <label className="block">
           <span className="block text-sm">Note (optional)</span>
@@ -62,7 +62,7 @@ export default async function CompanyLedgerPage({ params, searchParams }: { para
                 <td className="px-2 py-1">{iso(entry.date)}</td>
                 <td className="px-2 py-1">{KIND_LABEL[entry.kind] ?? entry.kind}</td>
                 <td className="px-2 py-1 text-right">{formatGBP(entry.amountPence)}</td>
-                <td className="px-2 py-1">{entry.note}</td>
+                <td className="px-2 py-1">{entry.note || "—"}</td>
                 <td className="px-2 py-1 text-right">
                   <form action={deleteLedgerEntryAction}>
                     <input type="hidden" name="companyId" value={id} />

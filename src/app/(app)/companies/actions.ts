@@ -69,7 +69,7 @@ export async function addLedgerEntryAction(formData: FormData) {
 export async function deleteLedgerEntryAction(formData: FormData) {
   await requireSession();
   const companyId = String(formData.get("companyId"));
-  await deleteLedgerEntry(String(formData.get("id")));
+  await deleteLedgerEntry(String(formData.get("id")), companyId);
   revalidatePath(`/companies/${companyId}/ledger`);
   redirect(`/companies/${companyId}/ledger`);
 }
