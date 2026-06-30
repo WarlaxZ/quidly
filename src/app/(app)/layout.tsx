@@ -15,6 +15,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     { href: "/settings", label: "Settings" },
     { href: "/properties", label: "Properties" },
     { href: "/companies", label: "Companies" },
+    { href: "/planner", label: "Planner" },
   ];
   const properties = await listProperties();
   const active = await getActiveProperty();
