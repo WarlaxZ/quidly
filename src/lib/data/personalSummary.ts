@@ -27,6 +27,9 @@ export async function getPersonalTaxYearSummary(
   return { summary, otherIncomePence: profile.otherIncomePence, region: profile.region as Region, usePropertyAllowance: profile.usePropertyAllowance };
 }
 
+/** Per-property gross figures for a management breakdown. `profitPence` is GROSS profit
+ *  (income − expenses, BEFORE the £1,000 property allowance and finance-cost relief, which
+ *  apply once at the person level — see getPersonalTaxYearSummary.taxableProfitPence). */
 export interface PropertyBreakdownRow {
   propertyId: string;
   propertyName: string;
@@ -39,6 +42,7 @@ export async function getPerPropertyBreakdown(taxYear: string): Promise<Property
   const { start, end } = taxYearRange(taxYear);
   const properties = await prisma.property.findMany({ where: { ownershipType: "personal" }, orderBy: { createdAt: "asc" } });
   const out: PropertyBreakdownRow[] = [];
+  // N+1 query is acceptable here: a landlord has O(1-10) properties.
   for (const p of properties) {
     const rows = await prisma.transaction.findMany({ where: { propertyId: p.id, date: { gte: start, lt: end } }, include: { category: true } });
     const { incomePence, expensesPence, profitPence } = computeProfit(rows.map((r) => toTaxTxn(r)));

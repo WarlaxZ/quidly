@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildTransactionWhere } from "./transactionFilter";
 
 describe("buildTransactionWhere", () => {
-  it("always scopes to the property", () => {
+  it("scopes to the property when an id is given", () => {
     expect(buildTransactionWhere("prop1", {})).toEqual({ propertyId: "prop1" });
   });
   it("adds category and direction filters", () => {

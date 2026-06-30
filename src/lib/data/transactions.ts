@@ -15,7 +15,7 @@ export interface TransactionInput {
   attachmentId?: string | null;
   source?: "manual" | "recurring" | "imported";
 }
-export function listTransactions(propertyId?: string) {
+export function listTransactions(propertyId: string | null) {
   return prisma.transaction.findMany({
     where: propertyId ? { propertyId } : {},
     orderBy: { date: "desc" },
