@@ -24,6 +24,7 @@ const DLA_2025_26: DLARates = {
 
 const DLA_RATES: Record<string, DLARates> = { "2025-26": DLA_2025_26 };
 const LATEST_YEAR = "2025-26";
+// Unknown years fall back to the latest known year (v1 behaviour); update DLA_RATES each April.
 function ratesFor(year: string): DLARates {
   return DLA_RATES[year] ?? DLA_RATES[LATEST_YEAR];
 }
@@ -66,9 +67,12 @@ export function beneficialLoanBenefit(input: BeneficialLoanInput): BeneficialLoa
   if (peak <= r.beneficialLoanThresholdPence) {
     return { applies: false, bikPence: 0, class1aNicPence: 0 };
   }
-  const avg = Math.round((Math.max(0, input.startBalancePence) + Math.max(0, input.endBalancePence)) / 2);
-  const gross = Math.round((avg * r.officialRateBps) / 10000);
-  const bikPence = Math.max(0, gross - input.interestPaidPence);
+  // Defer rounding to a single step (combine ÷2 averaging and ÷10000 rate), matching the
+  // single-round money idiom used across the tax module.
+  const sumClamped = Math.max(0, input.startBalancePence) + Math.max(0, input.endBalancePence);
+  const gross = Math.round((sumClamped * r.officialRateBps) / 20000);
+  const interestPaid = Math.max(0, input.interestPaidPence); // defensive: never inflate the BIK
+  const bikPence = Math.max(0, gross - interestPaid);
   const class1aNicPence = Math.round((bikPence * r.class1aBps) / 10000);
   return { applies: true, bikPence, class1aNicPence };
 }
