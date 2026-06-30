@@ -8,7 +8,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const { ty, error } = await searchParams;
   const taxYear = ty ?? getTaxYear(new Date());
   const property = await getOrCreateDefaultProperty();
-  const { summary, otherIncomePence, usePropertyAllowance } = await getTaxYearSummary(property.id, taxYear);
+  const { summary, otherIncomePence, usePropertyAllowance, region } = await getTaxYearSummary(property.id, taxYear);
 
   const Card = ({ label, pence, accent }: { label: string; pence: number; accent?: boolean }) => (
     <div className="rounded border p-4">
@@ -47,6 +47,13 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <label className="flex items-center gap-2">
           <input type="checkbox" name="usePropertyAllowance" defaultChecked={usePropertyAllowance} />
           <span className="text-sm">Use £1,000 property allowance instead of expenses</span>
+        </label>
+        <label className="flex items-center gap-2">
+          <span className="text-sm">Tax region</span>
+          <select name="region" defaultValue={region} className="border px-2 py-1">
+            <option value="englandWalesNI">England / Wales / NI</option>
+            <option value="scotland">Scotland</option>
+          </select>
         </label>
         <button type="submit" className="bg-blue-600 px-3 py-1 text-white">Update estimate</button>
       </form>

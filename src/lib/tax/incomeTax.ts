@@ -13,16 +13,20 @@ export function incomeTaxOn(totalIncomePence: number, taxYear: string, region: R
   const pa = effectivePersonalAllowance(totalIncomePence, bands);
   const taxable = Math.max(0, totalIncomePence - pa);
 
-  const basicBand = bands.basicRateLimitPence;
-  const higherBand = bands.higherRateLimitPence - pa - basicBand;
-
+  const cap = Math.max(0, bands.topThresholdPence - pa);
+  let remaining = Math.min(taxable, cap);
   let tax = 0;
-  const basic = Math.min(taxable, basicBand);
-  tax += basic * bands.basicRate;
-  const higher = Math.min(Math.max(0, taxable - basicBand), Math.max(0, higherBand));
-  tax += higher * bands.higherRate;
-  const additional = Math.max(0, taxable - basicBand - Math.max(0, higherBand));
-  tax += additional * bands.additionalRate;
+
+  for (const band of bands.bands) {
+    if (remaining <= 0) break;
+    const width = band.widthPence ?? remaining;
+    const slice = Math.min(remaining, width);
+    tax += slice * band.rate;
+    remaining -= slice;
+  }
+
+  const aboveCap = Math.max(0, taxable - cap);
+  tax += aboveCap * bands.topRate;
 
   return Math.round(tax);
 }

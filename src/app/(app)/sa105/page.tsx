@@ -2,17 +2,7 @@ import { getOrCreateDefaultProperty } from "../../../lib/data/property";
 import { getTaxYearSummary } from "../../../lib/data/summary";
 import { getTaxYear } from "../../../lib/tax/taxYear";
 import { formatGBP } from "../../../lib/tax/money";
-
-const BOX_LABELS: Record<string, string> = {
-  "20": "Total rents and other income from property",
-  "21": "Other property income",
-  "24": "Rent, rates, insurance, ground rents",
-  "25": "Property repairs and maintenance",
-  "27": "Legal, management, other professional fees",
-  "28": "Costs of services provided, including wages",
-  "29": "Other allowable property expenses",
-  "44": "Residential finance costs (mortgage interest)",
-};
+import { SA105_BOX_LABELS } from "../../../lib/tax/sa105Labels";
 
 export default async function Sa105Page({ searchParams }: { searchParams: Promise<{ ty?: string }> }) {
   const { ty } = await searchParams;
@@ -24,6 +14,7 @@ export default async function Sa105Page({ searchParams }: { searchParams: Promis
   return (
     <div className="max-w-3xl space-y-6">
       <h1 className="text-2xl font-semibold">SA105 summary — {taxYear}</h1>
+      <a href={`/export/sa105.pdf?ty=${taxYear}`} className="text-blue-600 hover:underline">Download PDF</a>
       <p className="text-sm text-gray-600">
         Figures to enter on the UK property pages (SA105) of your Self Assessment. Box 44 (finance costs) is a
         20% basic-rate tax reducer, not a deduction.
@@ -39,7 +30,7 @@ export default async function Sa105Page({ searchParams }: { searchParams: Promis
           {boxes.map((box) => (
             <tr key={box} className="border-b">
               <td className="px-3 py-2 font-mono">{box}</td>
-              <td className="px-3 py-2">{BOX_LABELS[box] ?? "—"}</td>
+              <td className="px-3 py-2">{SA105_BOX_LABELS[box] ?? "—"}</td>
               <td className="px-3 py-2 text-right">{formatGBP(summary.sa105[box])}</td>
             </tr>
           ))}

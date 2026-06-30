@@ -15,10 +15,13 @@ export default async function VendorsPage() {
         {vendors.map((v) => (
           <li key={v.id} className="flex items-center justify-between px-3 py-2">
             <span>{v.name}{v.contactDetails ? ` — ${v.contactDetails}` : ""}</span>
-            <form action={deleteVendorAction}>
-              <input type="hidden" name="id" value={v.id} />
-              <button type="submit" className="text-red-600">Delete</button>
-            </form>
+            <span className="flex items-center gap-2">
+              <a href={`/vendors/${v.id}/edit`} className="mr-2 text-blue-600 hover:underline">Edit</a>
+              <form action={deleteVendorAction}>
+                <input type="hidden" name="id" value={v.id} />
+                <button type="submit" className="text-red-600">Delete</button>
+              </form>
+            </span>
           </li>
         ))}
         {vendors.length === 0 && <li className="px-3 py-2 text-gray-500">No vendors yet.</li>}

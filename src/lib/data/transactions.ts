@@ -26,6 +26,9 @@ export function listTransactionsForTaxYear(propertyId: string, taxYear: string) 
     orderBy: { date: "asc" }, include: { category: true },
   });
 }
+export function getTransaction(id: string) {
+  return prisma.transaction.findUnique({ where: { id }, include: { category: true, vendor: true } });
+}
 export function createTransaction(input: TransactionInput) {
   return prisma.transaction.create({ data: input });
 }
@@ -41,4 +44,12 @@ export function listTransactionsFiltered(propertyId: string, filter: Transaction
     orderBy: { date: "desc" },
     include: { category: true, vendor: true },
   });
+}
+
+export async function bulkCreateTransactions(rows: TransactionInput[]): Promise<number> {
+  if (rows.length === 0) return 0;
+  const result = await prisma.transaction.createMany({
+    data: rows.map((r) => ({ ...r, source: "imported" as const })),
+  });
+  return result.count;
 }

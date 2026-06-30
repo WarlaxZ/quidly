@@ -7,6 +7,9 @@ export interface VendorInput {
   notes?: string | null;
   defaultCategoryId?: string | null;
 }
+export function getVendor(id: string) {
+  return prisma.vendor.findUnique({ where: { id } });
+}
 export function listVendors() {
   return prisma.vendor.findMany({ orderBy: { name: "asc" } });
 }

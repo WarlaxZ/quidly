@@ -11,6 +11,15 @@ async function rentCategoryId() {
 beforeEach(async () => { await resetDb(); });
 
 describe("transactions data layer", () => {
+  it("fetches a single transaction by id", async () => {
+    const property = await getOrCreateDefaultProperty();
+    const categoryId = await rentCategoryId();
+    const t = await createTransaction({ propertyId: property.id, categoryId, date: new Date("2025-06-01"), amountPence: 5000, direction: "in" });
+    const { getTransaction } = await import("./transactions");
+    const fetched = await getTransaction(t.id);
+    expect(fetched?.amountPence).toBe(5000);
+    expect(await getTransaction("nonexistent")).toBeNull();
+  });
   it("creates, lists, updates and deletes a transaction", async () => {
     const property = await getOrCreateDefaultProperty();
     const categoryId = await rentCategoryId();
@@ -36,5 +45,17 @@ describe("transactions data layer", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0].amountPence).toBe(200);
     expect(rows[0].category.sa105Box).toBe("20");
+  });
+  it("bulk-creates imported transactions tagged as imported", async () => {
+    const property = await getOrCreateDefaultProperty();
+    const categoryId = await rentCategoryId();
+    const { bulkCreateTransactions } = await import("./transactions");
+    const count = await bulkCreateTransactions([
+      { propertyId: property.id, categoryId, date: new Date("2025-06-01"), amountPence: 100, direction: "in", description: "a" },
+      { propertyId: property.id, categoryId, date: new Date("2025-06-02"), amountPence: 200, direction: "out", description: "b" },
+    ]);
+    expect(count).toBe(2);
+    const all = await listTransactions(property.id);
+    expect(all.every((t) => t.source === "imported")).toBe(true);
   });
 });
