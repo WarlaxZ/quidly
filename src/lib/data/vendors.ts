@@ -22,3 +22,10 @@ export function updateVendor(id: string, input: Partial<VendorInput>) {
 export function deleteVendor(id: string) {
   return prisma.vendor.delete({ where: { id } });
 }
+
+export async function matchVendorByName(name: string) {
+  const trimmed = name.trim().toLowerCase();
+  if (!trimmed) return null;
+  const all = await prisma.vendor.findMany();
+  return all.find((v) => v.name.trim().toLowerCase() === trimmed) ?? null;
+}
