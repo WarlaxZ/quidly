@@ -9,6 +9,9 @@ export type LoginResult =
   | { ok: false; reason: "invalid" };
 
 export async function attemptLogin(input: { username: string; password: string; ip: string | null }): Promise<LoginResult> {
+  // Note: the lockout read and the attempt write below are not atomic. Concurrent requests
+  // could each record a failure before either sees the threshold, allowing a few extra attempts.
+  // Accepted for a single-user deployment; revisit (e.g. a transaction or unique gate) if multi-user.
   const rows = await recentAttempts(DEFAULT_LOCKOUT.windowMs);
   const attempts: Attempt[] = rows.map((r) => ({ outcome: r.outcome as "success" | "failure", createdAt: r.createdAt }));
   const lock = evaluateLockout(attempts, new Date());

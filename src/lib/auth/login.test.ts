@@ -3,6 +3,8 @@ import { attemptLogin } from "./login";
 import { hashPassword } from "./password";
 import { recordAttempt, recentAttempts } from "../data/loginAttempts";
 import { resetDb } from "../../../test/setup/resetDb";
+import { prisma } from "../db";
+import { DEFAULT_LOCKOUT } from "./lockout";
 
 beforeAll(async () => {
   process.env.AUTH_USERNAME = "alice";
@@ -34,5 +36,14 @@ describe("attemptLogin", () => {
     const r = await attemptLogin({ username: "alice", password: "s3cret-pass", ip: null });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.reason).toBe("locked");
+  });
+
+  it("is not locked once failures age out of the window (production unlock path)", async () => {
+    const old = new Date(Date.now() - (DEFAULT_LOCKOUT.windowMs + 60_000));
+    for (let i = 0; i < 5; i++) {
+      await prisma.loginAttempt.create({ data: { outcome: "failure", ip: null, createdAt: old } });
+    }
+    const r = await attemptLogin({ username: "alice", password: "s3cret-pass", ip: null });
+    expect(r.ok).toBe(true); // stale failures don't count → login allowed
   });
 });
