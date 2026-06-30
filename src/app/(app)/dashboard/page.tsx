@@ -1,5 +1,4 @@
-import { getOrCreateDefaultProperty } from "../../../lib/data/property";
-import { getTaxYearSummary } from "../../../lib/data/summary";
+import { getPersonalTaxYearSummary, getPerPropertyBreakdown } from "../../../lib/data/personalSummary";
 import { getTaxYear } from "../../../lib/tax/taxYear";
 import { formatGBP, penceToPounds } from "../../../lib/tax/money";
 import { saveOtherIncomeAction } from "./actions";
@@ -7,8 +6,8 @@ import { saveOtherIncomeAction } from "./actions";
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ ty?: string; error?: string }> }) {
   const { ty, error } = await searchParams;
   const taxYear = ty ?? getTaxYear(new Date());
-  const property = await getOrCreateDefaultProperty();
-  const { summary, otherIncomePence, usePropertyAllowance, region } = await getTaxYearSummary(property.id, taxYear);
+  const { summary, otherIncomePence, usePropertyAllowance, region } = await getPersonalTaxYearSummary(taxYear);
+  const breakdown = await getPerPropertyBreakdown(taxYear);
 
   const Card = ({ label, pence, accent }: { label: string; pence: number; accent?: boolean }) => (
     <div className="rounded border p-4">
@@ -38,6 +37,24 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           ? " Tip: the £1,000 property allowance would reduce your taxable profit more than your actual expenses — consider enabling it."
           : " You're better off claiming actual expenses than the £1,000 property allowance."}
       </p>
+      {breakdown.length > 1 && (
+        <div className="space-y-1">
+          <h2 className="text-sm font-semibold text-gray-600">Per-property breakdown</h2>
+          <table className="w-full border text-sm">
+            <thead><tr className="border-b bg-gray-50 text-left"><th className="px-2 py-1">Property</th><th className="px-2 py-1 text-right">Income</th><th className="px-2 py-1 text-right">Expenses</th><th className="px-2 py-1 text-right">Profit (gross)</th></tr></thead>
+            <tbody>
+              {breakdown.map((r) => (
+                <tr key={r.propertyId} className="border-b">
+                  <td className="px-2 py-1">{r.propertyName}</td>
+                  <td className="px-2 py-1 text-right">{formatGBP(r.incomePence)}</td>
+                  <td className="px-2 py-1 text-right">{formatGBP(r.expensesPence)}</td>
+                  <td className="px-2 py-1 text-right">{formatGBP(r.profitPence)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
       <form action={saveOtherIncomeAction} className="flex items-end gap-2">
         <input type="hidden" name="taxYear" value={taxYear} />
         <label className="block">
