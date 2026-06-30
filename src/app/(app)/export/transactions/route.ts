@@ -1,3 +1,4 @@
+import { requireSession } from "../../../../lib/auth/session";
 import { getActiveProperty } from "../../../../lib/data/activeProperty";
 import { listTransactionsFiltered } from "../../../../lib/data/transactions";
 import type { TransactionFilter } from "../../../../lib/data/transactionFilter";
@@ -6,6 +7,7 @@ import { penceToPounds } from "../../../../lib/tax/money";
 import type { Direction } from "../../../../lib/tax/types";
 
 export async function GET(request: Request) {
+  await requireSession();
   const url = new URL(request.url);
   const active = await getActiveProperty();
   const filter: TransactionFilter = {

@@ -32,10 +32,10 @@ export default async function ReviewPage({ searchParams }: { searchParams: Promi
       {error && <p className="rounded bg-red-100 px-3 py-2 text-red-700">{error}</p>}
       <form action={confirmScanAction} className="flex flex-wrap items-end gap-2">
         <input type="hidden" name="attachmentId" value={attachment.id} />
-        <select name="propertyId" required className="border px-2 py-1">
+        <select name="propertyId" required defaultValue={active.propertyId ?? ""} className="border px-2 py-1">
           <option value="" disabled>— property —</option>
           {properties.map((p) => (
-            <option key={p.id} value={p.id} selected={p.id === active.propertyId}>{p.name}</option>
+            <option key={p.id} value={p.id}>{p.name}</option>
           ))}
         </select>
         <input type="date" name="date" defaultValue={x.isoDate ?? ""} required className="border px-2 py-1" />

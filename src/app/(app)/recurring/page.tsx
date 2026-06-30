@@ -4,8 +4,8 @@ import { listCategories } from "../../../lib/data/categories";
 import { listVendors } from "../../../lib/data/vendors";
 import { formatGBP } from "../../../lib/tax/money";
 import { addRecurringAction, deleteRecurringAction, generateNowAction } from "./actions";
-export default async function RecurringPage({ searchParams }: { searchParams: Promise<{ generated?: string }> }) {
-  const { generated } = await searchParams;
+export default async function RecurringPage({ searchParams }: { searchParams: Promise<{ generated?: string; error?: string }> }) {
+  const { generated, error } = await searchParams;
   const active = await getActiveProperty();
   const properties = await listProperties();
   const [rules, categories, vendors] = await Promise.all([
@@ -17,6 +17,7 @@ export default async function RecurringPage({ searchParams }: { searchParams: Pr
   return (
     <div className="max-w-4xl space-y-6">
       <h1 className="text-2xl font-semibold">Recurring payments — {headingProperty}</h1>
+      {error && <p className="rounded bg-red-100 px-3 py-2 text-red-700">{error}</p>}
       {generated !== undefined && <p className="text-green-700">Generated {generated} transaction(s).</p>}
       <form action={addRecurringAction} className="flex flex-wrap items-end gap-2">
         {active.isAll ? (
