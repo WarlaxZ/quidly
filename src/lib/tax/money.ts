@@ -5,7 +5,10 @@ export function poundsToPence(pounds: number): number {
 }
 
 export function penceToPounds(pence: number): number {
-  return Math.round(pence) / 100;
+  if (!Number.isInteger(pence)) {
+    throw new Error(`penceToPounds: expected integer pence, got ${pence}`);
+  }
+  return pence / 100;
 }
 
 export function formatGBP(pence: number): string {

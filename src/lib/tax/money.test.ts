@@ -14,4 +14,8 @@ describe("money", () => {
   it("formats pence as GBP", () => {
     expect(formatGBP(123456)).toBe("£1,234.56");
   });
+
+  it("rejects non-integer pence", () => {
+    expect(() => penceToPounds(199.9)).toThrow();
+  });
 });
