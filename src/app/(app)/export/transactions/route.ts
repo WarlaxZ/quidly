@@ -17,6 +17,7 @@ export async function GET(request: Request) {
   };
   const txns = await listTransactionsFiltered(active.propertyId, filter);
   const rows = txns.map((t) => ({
+    property: t.property?.name ?? "",
     date: t.date.toISOString().slice(0, 10),
     direction: t.direction,
     category: t.category.name,
@@ -24,7 +25,7 @@ export async function GET(request: Request) {
     description: t.description ?? "",
     amount: penceToPounds(t.amountPence).toFixed(2),
   }));
-  const csv = toCsv(["date", "direction", "category", "vendor", "description", "amount"], rows);
+  const csv = toCsv(["property", "date", "direction", "category", "vendor", "description", "amount"], rows);
   return new Response(csv, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
