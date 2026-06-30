@@ -11,6 +11,15 @@ async function rentCategoryId() {
 beforeEach(async () => { await resetDb(); });
 
 describe("transactions data layer", () => {
+  it("fetches a single transaction by id", async () => {
+    const property = await getOrCreateDefaultProperty();
+    const categoryId = await rentCategoryId();
+    const t = await createTransaction({ propertyId: property.id, categoryId, date: new Date("2025-06-01"), amountPence: 5000, direction: "in" });
+    const { getTransaction } = await import("./transactions");
+    const fetched = await getTransaction(t.id);
+    expect(fetched?.amountPence).toBe(5000);
+    expect(await getTransaction("nonexistent")).toBeNull();
+  });
   it("creates, lists, updates and deletes a transaction", async () => {
     const property = await getOrCreateDefaultProperty();
     const categoryId = await rentCategoryId();

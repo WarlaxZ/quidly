@@ -5,6 +5,12 @@ import { resetDb } from "../../../test/setup/resetDb";
 beforeEach(async () => { await resetDb(); });
 
 describe("vendors data layer", () => {
+  it("fetches a single vendor by id", async () => {
+    const v = await createVendor({ name: "Acme" });
+    const { getVendor } = await import("./vendors");
+    expect((await getVendor(v.id))?.name).toBe("Acme");
+    expect(await getVendor("nope")).toBeNull();
+  });
   it("creates and lists vendors alphabetically", async () => {
     await createVendor({ name: "Zen Plumbing" });
     await createVendor({ name: "Acme Lettings" });

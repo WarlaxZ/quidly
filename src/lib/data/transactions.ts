@@ -26,6 +26,9 @@ export function listTransactionsForTaxYear(propertyId: string, taxYear: string) 
     orderBy: { date: "asc" }, include: { category: true },
   });
 }
+export function getTransaction(id: string) {
+  return prisma.transaction.findUnique({ where: { id }, include: { category: true, vendor: true } });
+}
 export function createTransaction(input: TransactionInput) {
   return prisma.transaction.create({ data: input });
 }
