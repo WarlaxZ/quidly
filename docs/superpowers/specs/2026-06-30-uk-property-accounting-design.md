@@ -89,8 +89,8 @@ Upload an invoice/receipt → extract vendor, date, amount, suggested category i
 
 ## Section 6 — MVP phasing
 
-- **Phase 1 (build now):** one property; transactions CRUD; seeded UK categories; basic vendors; recurring rules; tax-year dashboard + SA105 summary + tax estimate; filtering; CSV export; receipt file upload (storage only).
-- **Phase 2:** multi-property UI; richer reports + PDF; bank-statement CSV import; AI extraction.
+- **Phase 1 (build now):** one property; transactions CRUD; seeded UK categories; basic vendors; recurring rules; tax-year dashboard + SA105 summary + tax estimate; filtering; CSV export. *(Receipt file upload was originally listed here but was deliberately moved to Phase 2 during planning — storage-only upload has little value without the viewing/AI-extraction flow it feeds. The `Attachment` table exists in the schema, ready for it.)*
+- **Phase 2:** multi-property UI; richer reports + PDF; bank-statement CSV import; receipt file upload + AI extraction; single-user auth; region picker (incl. Scottish tax bands); inline editing.
 - **Phase 3 (only if user incorporates):** company mode + corporation-tax calculator.
 
 ## Non-goals (explicit)
