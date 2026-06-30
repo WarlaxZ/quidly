@@ -6,7 +6,9 @@ import { getOrCreateDefaultProperty } from "../../../lib/data/property";
 import { parseAmountToPence } from "../../../lib/money/parseAmount";
 import type { Direction } from "../../../lib/tax/types";
 import type { RecurFrequency } from "../../../lib/recurring/occurrences";
+import { requireSession } from "../../../lib/auth/session";
 export async function addRecurringAction(formData: FormData) {
+  await requireSession();
   const property = await getOrCreateDefaultProperty();
   await createRecurringRule({
     propertyId: property.id,
@@ -21,11 +23,13 @@ export async function addRecurringAction(formData: FormData) {
   revalidatePath("/recurring");
 }
 export async function deleteRecurringAction(formData: FormData) {
+  await requireSession();
   const id = String(formData.get("id") ?? "");
   if (id) await deleteRecurringRule(id);
   revalidatePath("/recurring");
 }
 export async function generateNowAction() {
+  await requireSession();
   const property = await getOrCreateDefaultProperty();
   const count = await materialiseDue(new Date(), property.id);
   revalidatePath("/transactions");

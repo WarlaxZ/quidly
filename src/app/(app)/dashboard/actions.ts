@@ -3,8 +3,10 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { updateProfile } from "../../../lib/data/taxProfile";
 import { parseAmountToPence } from "../../../lib/money/parseAmount";
+import { requireSession } from "../../../lib/auth/session";
 
 export async function saveOtherIncomeAction(formData: FormData) {
+  await requireSession();
   const taxYear = String(formData.get("taxYear"));
   if (!/^\d{4}-\d{2}$/.test(taxYear)) {
     redirect(`/dashboard?error=${encodeURIComponent("Invalid tax year")}`);

@@ -9,7 +9,7 @@ export async function POST(request: Request) {
   const username = String(form.get("username") ?? "");
   const password = String(form.get("password") ?? "");
   const next = safePath(String(form.get("next") ?? "/dashboard"));
-  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim().slice(0, 45) ?? null;
 
   const result = await attemptLogin({ username, password, ip });
 
