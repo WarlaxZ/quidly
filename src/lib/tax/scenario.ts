@@ -1,11 +1,9 @@
 import { estimatePropertyTax } from "./incomeTax";
-import { financeCostReducer } from "./profit";
+import { financeCostReducer, PROPERTY_ALLOWANCE_PENCE } from "./profit";
 import { corporationTax } from "./corporationTax";
 import { dividendTax } from "./dividendTax";
 import { formatGBP } from "./money";
 import type { Region } from "./types";
-
-const PROPERTY_ALLOWANCE_PENCE = 1_000_00;
 
 export interface ScenarioInput {
   incomePence: number;
@@ -72,10 +70,12 @@ export function runScenario(input: ScenarioInput): ScenarioResult {
     key: "company-retained",
     label: "Company — profits retained",
     taxPence: ct,
-    pocketPence: 0,
+    pocketPence: 0, // owner extracts nothing; profit (or loss) stays in the company
     note: companyProfit > 0
       ? `${formatGBP(retainedPence)} kept in the company (not in your pocket until you extract it).`
-      : "Company made a loss this period — nothing to retain.",
+      : companyProfit === 0
+        ? "Company broke even — nothing to retain."
+        : "Company made a loss this period — nothing to retain.",
   };
 
   // --- Company: profits taken as dividends ---

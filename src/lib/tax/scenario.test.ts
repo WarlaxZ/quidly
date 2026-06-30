@@ -37,7 +37,7 @@ describe("runScenario (worked landlord case)", () => {
 
   it("company — taken as dividends: corporation tax + dividend tax", () => {
     const o = byKey(base)["company-dividends"];
-    // CT £950; distributable £4,050; dividend tax = (4,050 − 500) × 8.75% = 310.625 → 310.63
+    // CT £950; distributable £4,050; taxable £3,550 → 355,000p × 875bps / 10,000 = 31,062.5p → 31,063p (£310.63)
     expect(o.taxPence).toBe(1_260_63);   // 950.00 + 310.63
     expect(o.pocketPence).toBe(3_739_37); // 5,000 − 950 − 310.63
   });

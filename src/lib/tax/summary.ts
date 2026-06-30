@@ -1,9 +1,8 @@
-import { computeProfit, propertyAllowanceAdvice, financeCostReducer } from "./profit";
+import { computeProfit, propertyAllowanceAdvice, financeCostReducer, PROPERTY_ALLOWANCE_PENCE } from "./profit";
 import { estimatePropertyTax } from "./incomeTax";
 import { sa105Boxes } from "./sa105";
 import type { Region, TaxTxn } from "./types";
 
-const PROPERTY_ALLOWANCE_PENCE = 1_000_00;
 
 export interface SummaryProfile {
   taxYear: string;
