@@ -12,6 +12,8 @@ export async function saveOtherIncomeAction(formData: FormData) {
     redirect(`/dashboard?error=${encodeURIComponent("Invalid tax year")}`);
   }
   const usePropertyAllowance = formData.get("usePropertyAllowance") === "on";
+  const regionRaw = String(formData.get("region") ?? "englandWalesNI");
+  const region = regionRaw === "scotland" ? "scotland" : "englandWalesNI";
   const raw = String(formData.get("otherIncome") ?? "0").trim();
   let otherIncomePence!: number;
   try {
@@ -19,7 +21,7 @@ export async function saveOtherIncomeAction(formData: FormData) {
   } catch (e) {
     redirect(`/dashboard?ty=${taxYear}&error=${encodeURIComponent((e as Error).message)}`);
   }
-  await updateProfile(taxYear, { otherIncomePence, usePropertyAllowance });
+  await updateProfile(taxYear, { otherIncomePence, usePropertyAllowance, region });
   revalidatePath("/dashboard");
   redirect(`/dashboard?ty=${taxYear}`);
 }
