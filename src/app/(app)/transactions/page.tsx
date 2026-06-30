@@ -1,14 +1,14 @@
 import { listTransactions } from "../../../lib/data/transactions";
 import { getOrCreateDefaultProperty } from "../../../lib/data/property";
 import { listVendors } from "../../../lib/data/vendors";
-import { prisma } from "../../../lib/db";
+import { listCategories } from "../../../lib/data/categories";
 import { formatGBP } from "../../../lib/tax/money";
 import { addTransactionAction, deleteTransactionAction } from "./actions";
 export default async function TransactionsPage() {
   const property = await getOrCreateDefaultProperty();
   const [txns, categories, vendors] = await Promise.all([
     listTransactions(property.id),
-    prisma.category.findMany({ orderBy: { name: "asc" } }),
+    listCategories(),
     listVendors(),
   ]);
   return (

@@ -26,8 +26,10 @@ export function createRecurringRule(input: RecurringInput) {
 export function deleteRecurringRule(id: string) {
   return prisma.recurringRule.delete({ where: { id } });
 }
-export async function materialiseDue(asOf: Date): Promise<number> {
-  const rules = await prisma.recurringRule.findMany();
+export async function materialiseDue(asOf: Date, propertyId?: string): Promise<number> {
+  const rules = await prisma.recurringRule.findMany({
+    where: propertyId ? { propertyId } : undefined,
+  });
   let created = 0;
   for (const rule of rules) {
     const dates = recurringOccurrences(
