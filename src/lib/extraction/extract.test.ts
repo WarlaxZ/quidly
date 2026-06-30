@@ -12,6 +12,10 @@ describe("buildExtractionTool", () => {
     expect(tool.name).toBe("record_receipt");
     expect(tool.input_schema.properties.categoryId.enum).toEqual(["c-rent", "c-repairs"]);
   });
+  it("requires the key fields", () => {
+    const tool = buildExtractionTool(categories);
+    expect(tool.input_schema.required).toEqual(["vendorName", "amount", "direction", "confidence"]);
+  });
 });
 
 describe("parseExtraction", () => {
@@ -32,6 +36,15 @@ describe("parseExtraction", () => {
   it("throws when the amount is missing or non-positive", () => {
     expect(() => parseExtraction({ vendorName: "X", amount: 0 }, categories)).toThrow();
     expect(() => parseExtraction({ vendorName: "X" }, categories)).toThrow();
+  });
+  it("throws on a sub-penny amount that rounds to zero", () => {
+    expect(() => parseExtraction({ vendorName: "X", amount: 0.004 }, categories)).toThrow();
+  });
+  it("throws on a string amount (no coercion)", () => {
+    expect(() => parseExtraction({ vendorName: "X", amount: "12.50" }, categories)).toThrow();
+  });
+  it("nulls a structurally-invalid date", () => {
+    expect(parseExtraction({ vendorName: "X", amount: 5, date: "2026-02-30" }, categories).isoDate).toBeNull();
   });
 });
 
@@ -55,5 +68,11 @@ describe("extractReceipt", () => {
   it("throws if no tool_use block is returned", async () => {
     const fake: AnthropicLike = { messages: { create: async () => ({ content: [{ type: "text", text: "no" }] }) } };
     await expect(extractReceipt(Buffer.from("x"), "image/jpeg", categories, fake)).rejects.toThrow();
+  });
+  it("sends a document block for a PDF", async () => {
+    let captured: any = null;
+    const fake: AnthropicLike = { messages: { create: async (p: any) => { captured = p; return { content: [{ type: "tool_use", name: "record_receipt", input: { vendorName: "Z", amount: 9.99, direction: "out", confidence: "low" } }] }; } } };
+    await extractReceipt(Buffer.from("pdf"), "application/pdf", categories, fake);
+    expect(captured.messages[0].content[0].type).toBe("document");
   });
 });

@@ -1,3 +1,4 @@
+import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { getExtractionModel } from "./config";
 import { poundsToPence } from "../tax/money";
@@ -39,17 +40,27 @@ export function buildExtractionTool(categories: CategoryRef[]) {
   };
 }
 
+function toValidIsoDate(value: unknown): string | null {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const d = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === value ? value : null;
+}
+
 export function parseExtraction(input: unknown, categories: CategoryRef[]): Extraction {
   const o = (input ?? {}) as Record<string, unknown>;
-  const amountNum = typeof o.amount === "number" ? o.amount : Number(o.amount);
+  const amountNum = typeof o.amount === "number" ? o.amount : NaN;
   if (!Number.isFinite(amountNum) || amountNum <= 0) {
+    throw new Error("Couldn't read a valid amount from the receipt.");
+  }
+  const amountPence = poundsToPence(amountNum);
+  if (amountPence <= 0) {
     throw new Error("Couldn't read a valid amount from the receipt.");
   }
   const validIds = new Set(categories.map((c) => c.id));
   return {
-    vendorName: typeof o.vendorName === "string" ? o.vendorName.trim() : "",
-    isoDate: typeof o.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(o.date) ? o.date : null,
-    amountPence: poundsToPence(amountNum),
+    vendorName: typeof o.vendorName === "string" ? o.vendorName.trim().slice(0, 255) : "",
+    isoDate: toValidIsoDate(o.date),
+    amountPence,
     direction: o.direction === "in" ? "in" : "out",
     categoryId: typeof o.categoryId === "string" && validIds.has(o.categoryId) ? o.categoryId : null,
     confidence: o.confidence === "high" || o.confidence === "medium" ? o.confidence : "low",
