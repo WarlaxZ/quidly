@@ -25,6 +25,10 @@ describe("computeProfit", () => {
     expect(r.expensesPence).toBe(200_00);
     expect(r.profitPence).toBe(1_000_00);
   });
+  it("returns zeros for an empty transaction list", () => {
+    const r = computeProfit([]);
+    expect(r).toEqual({ incomePence: 0, expensesPence: 0, profitPence: 0 });
+  });
 });
 
 describe("propertyAllowanceAdvice", () => {
@@ -43,11 +47,19 @@ describe("propertyAllowanceAdvice", () => {
     expect(advice.fullReliefNoReportingNeeded).toBe(true);
     expect(advice.taxableProfitPence).toBe(0);
   });
+  it("treats gross income of exactly £1,000 as full relief", () => {
+    const advice = propertyAllowanceAdvice(1_000_00, 0);
+    expect(advice.fullReliefNoReportingNeeded).toBe(true);
+    expect(advice.taxableProfitPence).toBe(0);
+  });
 });
 
 describe("financeCostReducer", () => {
   it("is 20% of finance costs, capped at the property profit", () => {
     expect(financeCostReducer(3_000_00, 10_000_00)).toBe(600_00);
     expect(financeCostReducer(12_000_00, 5_000_00)).toBe(1_000_00);
+  });
+  it("is zero in a loss year (negative profit)", () => {
+    expect(financeCostReducer(5_000_00, -1_000_00)).toBe(0);
   });
 });
