@@ -28,6 +28,8 @@ const LATEST_YEAR = "2025-26";
 
 export function getBands(taxYear: string, region: Region): TaxBands {
   const year = BANDS[taxYear] ?? BANDS[LATEST_YEAR];
+  // Scotland is intentionally not yet configured — it deliberately falls back to
+  // England/Wales/NI bands until Scottish bands are added. Do not "fix" this.
   const bands = year[region] ?? year.englandWalesNI;
   if (!bands) throw new Error(`No tax bands configured for ${taxYear}/${region}`);
   return bands;
