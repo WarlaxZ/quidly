@@ -18,4 +18,21 @@ describe("toTaxTxn", () => {
       sa105Box: "20",
     });
   });
+
+  it("passes through a null sa105Box and expense direction", () => {
+    const row = {
+      date: new Date("2025-06-01"),
+      amountPence: 5000,
+      direction: "out" as const,
+      category: { kind: "capital" as const, allowable: false, sa105Box: null },
+    };
+    expect(toTaxTxn(row)).toEqual({
+      date: new Date("2025-06-01"),
+      amountPence: 5000,
+      direction: "out",
+      categoryKind: "capital",
+      allowable: false,
+      sa105Box: null,
+    });
+  });
 });

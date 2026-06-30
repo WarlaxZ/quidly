@@ -7,5 +7,6 @@ export function parseAmountToPence(input: string): number {
   }
   const [pounds, fraction = ""] = cleaned.split(".");
   const pence = Number(pounds) * 100 + Number(fraction.padEnd(2, "0"));
+  if (pence === 0) throw new Error("Amount must be greater than zero");
   return pence;
 }

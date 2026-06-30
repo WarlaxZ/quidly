@@ -18,4 +18,8 @@ describe("parseAmountToPence", () => {
   it("rejects more than two decimal places", () => {
     expect(() => parseAmountToPence("1.234")).toThrow();
   });
+  it("rejects a zero amount", () => {
+    expect(() => parseAmountToPence("0")).toThrow();
+    expect(() => parseAmountToPence("0.00")).toThrow();
+  });
 });
