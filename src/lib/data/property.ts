@@ -10,6 +10,6 @@ export interface PropertyInput {
   name: string;
   address?: string | null;
 }
-export function updateProperty(id: string, input: PropertyInput) {
+export function updateProperty(id: string, input: Partial<PropertyInput>) {
   return prisma.property.update({ where: { id }, data: input });
 }

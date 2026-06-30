@@ -98,6 +98,7 @@ model Transaction {
   createdAt    DateTime     @default(now())
 
   @@index([propertyId, date])
+  @@unique([recurringId, date])
 }
 
 model RecurringRule {

@@ -41,24 +41,27 @@ export async function materialiseDue(asOf: Date): Promise<number> {
       asOf,
     );
     if (dates.length === 0) continue;
-    await prisma.transaction.createMany({
-      data: dates.map((date) => ({
-        propertyId: rule.propertyId,
-        categoryId: rule.categoryId,
-        vendorId: rule.vendorId,
-        date,
-        amountPence: rule.amountPence,
-        direction: rule.direction,
-        source: "recurring" as const,
-        recurringId: rule.id,
-        description: "Recurring",
-      })),
+    const insertResult = await prisma.$transaction(async (tx) => {
+      const r = await tx.transaction.createMany({
+        data: dates.map((date) => ({
+          propertyId: rule.propertyId,
+          categoryId: rule.categoryId,
+          vendorId: rule.vendorId,
+          date,
+          amountPence: rule.amountPence,
+          direction: rule.direction,
+          source: "recurring" as const,
+          recurringId: rule.id,
+          description: "Recurring",
+        })),
+      });
+      await tx.recurringRule.update({
+        where: { id: rule.id },
+        data: { lastGeneratedDate: dates[dates.length - 1] },
+      });
+      return r;
     });
-    created += dates.length;
-    await prisma.recurringRule.update({
-      where: { id: rule.id },
-      data: { lastGeneratedDate: dates[dates.length - 1] },
-    });
+    created += insertResult.count;
   }
   return created;
 }

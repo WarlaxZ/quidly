@@ -13,7 +13,7 @@ export function listVendors() {
 export function createVendor(input: VendorInput) {
   return prisma.vendor.create({ data: input });
 }
-export function updateVendor(id: string, input: VendorInput) {
+export function updateVendor(id: string, input: Partial<VendorInput>) {
   return prisma.vendor.update({ where: { id }, data: input });
 }
 export function deleteVendor(id: string) {
