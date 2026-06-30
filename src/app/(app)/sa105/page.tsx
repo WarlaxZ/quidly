@@ -1,5 +1,4 @@
-import { getOrCreateDefaultProperty } from "../../../lib/data/property";
-import { getTaxYearSummary } from "../../../lib/data/summary";
+import { getPersonalTaxYearSummary } from "../../../lib/data/personalSummary";
 import { getTaxYear } from "../../../lib/tax/taxYear";
 import { formatGBP } from "../../../lib/tax/money";
 import { SA105_BOX_LABELS } from "../../../lib/tax/sa105Labels";
@@ -7,13 +6,13 @@ import { SA105_BOX_LABELS } from "../../../lib/tax/sa105Labels";
 export default async function Sa105Page({ searchParams }: { searchParams: Promise<{ ty?: string }> }) {
   const { ty } = await searchParams;
   const taxYear = ty ?? getTaxYear(new Date());
-  const property = await getOrCreateDefaultProperty();
-  const { summary } = await getTaxYearSummary(property.id, taxYear);
+  const { summary } = await getPersonalTaxYearSummary(taxYear);
   const boxes = Object.keys(summary.sa105).sort((a, b) => Number(a) - Number(b));
 
   return (
     <div className="max-w-3xl space-y-6">
       <h1 className="text-2xl font-semibold">SA105 summary — {taxYear}</h1>
+      <p className="text-sm text-gray-600">Aggregated across your personally-owned properties.</p>
       <a href={`/export/sa105.pdf?ty=${taxYear}`} className="text-blue-600 hover:underline">Download PDF</a>
       <p className="text-sm text-gray-600">
         Figures to enter on the UK property pages (SA105) of your Self Assessment. Box 44 (finance costs) is a

@@ -2,16 +2,16 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createRecurringRule, deleteRecurringRule, materialiseDue } from "../../../lib/data/recurring";
-import { getOrCreateDefaultProperty } from "../../../lib/data/property";
 import { parseAmountToPence } from "../../../lib/money/parseAmount";
 import type { Direction } from "../../../lib/tax/types";
 import type { RecurFrequency } from "../../../lib/recurring/occurrences";
 import { requireSession } from "../../../lib/auth/session";
 export async function addRecurringAction(formData: FormData) {
   await requireSession();
-  const property = await getOrCreateDefaultProperty();
+  const propertyId = String(formData.get("propertyId") ?? "");
+  if (!propertyId) redirect(`/recurring?error=${encodeURIComponent("Choose a property.")}`);
   await createRecurringRule({
-    propertyId: property.id,
+    propertyId,
     categoryId: String(formData.get("categoryId")),
     amountPence: parseAmountToPence(String(formData.get("amount") ?? "")),
     direction: String(formData.get("direction")) as Direction,
@@ -28,10 +28,10 @@ export async function deleteRecurringAction(formData: FormData) {
   if (id) await deleteRecurringRule(id);
   revalidatePath("/recurring");
 }
-export async function generateNowAction() {
+export async function generateNowAction(formData: FormData) {
   await requireSession();
-  const property = await getOrCreateDefaultProperty();
-  const count = await materialiseDue(new Date(), property.id);
+  const propertyId = String(formData.get("propertyId") ?? "") || undefined;
+  const count = await materialiseDue(new Date(), propertyId);
   revalidatePath("/transactions");
   redirect(`/recurring?generated=${count}`);
 }

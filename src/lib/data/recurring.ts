@@ -14,10 +14,11 @@ export interface RecurringInput {
   startDate: Date;
   endDate?: Date | null;
 }
-export function listRecurringRules(propertyId: string) {
+export function listRecurringRules(propertyId: string | null) {
   return prisma.recurringRule.findMany({
-    where: { propertyId }, orderBy: { startDate: "asc" },
-    include: { category: true, vendor: true },
+    where: propertyId ? { propertyId } : {},
+    orderBy: { startDate: "asc" },
+    include: { category: true, vendor: true, property: true },
   });
 }
 export function createRecurringRule(input: RecurringInput) {

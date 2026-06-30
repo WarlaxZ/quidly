@@ -15,10 +15,11 @@ export interface TransactionInput {
   attachmentId?: string | null;
   source?: "manual" | "recurring" | "imported";
 }
-export function listTransactions(propertyId: string) {
+export function listTransactions(propertyId: string | null) {
   return prisma.transaction.findMany({
-    where: { propertyId }, orderBy: { date: "desc" },
-    include: { category: true, vendor: true },
+    where: propertyId ? { propertyId } : {},
+    orderBy: { date: "desc" },
+    include: { category: true, vendor: true, property: true },
   });
 }
 export function listTransactionsForTaxYear(propertyId: string, taxYear: string) {
@@ -40,11 +41,11 @@ export function updateTransaction(id: string, input: Partial<TransactionInput>) 
 export function deleteTransaction(id: string) {
   return prisma.transaction.delete({ where: { id } });
 }
-export function listTransactionsFiltered(propertyId: string, filter: TransactionFilter) {
+export function listTransactionsFiltered(propertyId: string | null, filter: TransactionFilter) {
   return prisma.transaction.findMany({
     where: buildTransactionWhere(propertyId, filter),
     orderBy: { date: "desc" },
-    include: { category: true, vendor: true },
+    include: { category: true, vendor: true, property: true },
   });
 }
 

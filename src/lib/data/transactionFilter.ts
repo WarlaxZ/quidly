@@ -7,13 +7,14 @@ export interface TransactionFilter {
   direction?: Direction;
 }
 export interface TransactionWhere {
-  propertyId: string;
+  propertyId?: string;
   categoryId?: string;
   direction?: Direction;
   date?: { gte: Date; lt: Date };
 }
-export function buildTransactionWhere(propertyId: string, filter: TransactionFilter): TransactionWhere {
-  const where: TransactionWhere = { propertyId };
+export function buildTransactionWhere(propertyId: string | null, filter: TransactionFilter): TransactionWhere {
+  const where: TransactionWhere = {};
+  if (propertyId) where.propertyId = propertyId;
   if (filter.categoryId) where.categoryId = filter.categoryId;
   if (filter.direction) where.direction = filter.direction;
   if (filter.taxYear) {

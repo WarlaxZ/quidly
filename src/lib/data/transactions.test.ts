@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { createTransaction, listTransactions, listTransactionsForTaxYear, updateTransaction, deleteTransaction } from "./transactions";
+import { createTransaction, listTransactions, listTransactionsFiltered, listTransactionsForTaxYear, updateTransaction, deleteTransaction } from "./transactions";
 import { getOrCreateDefaultProperty } from "./property";
 import { resetDb } from "../../../test/setup/resetDb";
 import { prisma } from "../db";
@@ -45,6 +45,17 @@ describe("transactions data layer", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0].amountPence).toBe(200);
     expect(rows[0].category.sa105Box).toBe("20");
+  });
+  it("lists across all properties with the property included when propertyId is null", async () => {
+    const { createProperty } = await import("./property");
+    const a = await createProperty({ name: "A" });
+    const b = await createProperty({ name: "B" });
+    const rent = await rentCategoryId();
+    await createTransaction({ propertyId: a.id, categoryId: rent, date: new Date("2025-06-01"), amountPence: 100, direction: "in" });
+    await createTransaction({ propertyId: b.id, categoryId: rent, date: new Date("2025-06-02"), amountPence: 200, direction: "in" });
+    const all = await listTransactionsFiltered(null, {});
+    expect(all).toHaveLength(2);
+    expect(all[0].property?.name).toBeDefined();
   });
   it("bulk-creates imported transactions tagged as imported", async () => {
     const property = await getOrCreateDefaultProperty();

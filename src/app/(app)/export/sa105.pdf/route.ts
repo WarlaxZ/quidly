@@ -1,6 +1,5 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
-import { getOrCreateDefaultProperty } from "../../../../lib/data/property";
-import { getTaxYearSummary } from "../../../../lib/data/summary";
+import { getPersonalTaxYearSummary } from "../../../../lib/data/personalSummary";
 import { getTaxYear } from "../../../../lib/tax/taxYear";
 import { formatGBP } from "../../../../lib/tax/money";
 import { SA105_BOX_LABELS } from "../../../../lib/tax/sa105Labels";
@@ -8,8 +7,7 @@ import { SA105_BOX_LABELS } from "../../../../lib/tax/sa105Labels";
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const taxYear = url.searchParams.get("ty") ?? getTaxYear(new Date());
-  const property = await getOrCreateDefaultProperty();
-  const { summary } = await getTaxYearSummary(property.id, taxYear);
+  const { summary } = await getPersonalTaxYearSummary(taxYear);
   const boxes = Object.keys(summary.sa105).sort((a, b) => Number(a) - Number(b));
 
   const pdf = await PDFDocument.create();
@@ -20,7 +18,7 @@ export async function GET(request: Request) {
   const draw = (text: string, x: number, size = 11, f = font) => { page.drawText(text, { x, y, size, font: f, color: rgb(0, 0, 0) }); };
 
   draw(`SA105 summary — ${taxYear}`, 50, 18, bold); y -= 28;
-  draw(property.name, 50, 12); y -= 28;
+  draw("All personal properties", 50, 12); y -= 28;
   draw("Box", 50, 11, bold); draw("Description", 110, 11, bold); draw("Amount", 460, 11, bold); y -= 18;
   for (const box of boxes) {
     draw(box, 50); draw(SA105_BOX_LABELS[box] ?? "—", 110); draw(formatGBP(summary.sa105[box]), 460); y -= 18;
