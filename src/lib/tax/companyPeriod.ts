@@ -6,3 +6,11 @@ export function companyAccountingPeriod(yearEndDay: number, yearEndMonth: number
   const start = new Date(previousYearEnd.getTime() + DAY_MS);
   return { start, end };
 }
+
+/** The accounting-period year that a given date falls in, for a company with this year-end.
+ *  e.g. year-end 31 Dec: 2025-06-01 → 2025. Year-end 31 Mar: 2025-06-01 → 2026. */
+export function companyPeriodYearOf(date: Date, yearEndDay: number, yearEndMonth: number): number {
+  const y = date.getUTCFullYear();
+  const endThisCalendarYear = Date.UTC(y, yearEndMonth - 1, yearEndDay);
+  return date.getTime() <= endThisCalendarYear ? y : y + 1;
+}
