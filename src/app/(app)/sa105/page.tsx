@@ -14,6 +14,7 @@ export default async function Sa105Page({ searchParams }: { searchParams: Promis
   return (
     <div className="max-w-3xl space-y-6">
       <h1 className="text-2xl font-semibold">SA105 summary — {taxYear}</h1>
+      <a href={`/export/sa105.pdf?ty=${taxYear}`} className="text-blue-600 hover:underline">Download PDF</a>
       <p className="text-sm text-gray-600">
         Figures to enter on the UK property pages (SA105) of your Self Assessment. Box 44 (finance costs) is a
         20% basic-rate tax reducer, not a deduction.
