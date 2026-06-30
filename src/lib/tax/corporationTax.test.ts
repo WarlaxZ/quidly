@@ -41,4 +41,11 @@ describe("corporationTax (2025-26)", () => {
     expect(corporationTax(0).taxPence).toBe(0);
     expect(corporationTax(-5_000_00).taxPence).toBe(0);
   });
+  it("rounds half-up at a fraction-prone marginal input (basis points are exact)", () => {
+    // £100,001 profit (marginal band): 100001_00×2500 − (250000_00−100001_00)×150
+    // = 22,750,265,000 / 10,000 = 2,275,026.5p → half-up to 2,275,027p (£22,750.27).
+    const r = corporationTax(100_001_00);
+    expect(r.taxPence).toBe(2_275_027);
+    expect(r.band).toBe("marginal");
+  });
 });
