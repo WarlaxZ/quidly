@@ -1,0 +1,137 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum OwnershipType {
+  personal
+  company
+}
+
+enum CategoryKind {
+  income
+  expense
+  finance
+  capital
+}
+
+enum Direction {
+  in
+  out
+}
+
+enum RecurFrequency {
+  monthly
+  quarterly
+  annual
+}
+
+enum TxnSource {
+  manual
+  recurring
+  imported
+}
+
+enum Region {
+  englandWalesNI
+  scotland
+}
+
+enum Basis {
+  cash
+  accruals
+}
+
+model Property {
+  id              String        @id @default(cuid())
+  name            String
+  address         String?
+  ownershipType   OwnershipType @default(personal)
+  acquisitionDate DateTime?
+  transactions    Transaction[]
+  recurringRules  RecurringRule[]
+  createdAt       DateTime      @default(now())
+}
+
+model Vendor {
+  id                String        @id @default(cuid())
+  name              String
+  contactDetails    String?
+  notes             String?
+  defaultCategoryId String?
+  defaultCategory   Category?     @relation(fields: [defaultCategoryId], references: [id])
+  transactions      Transaction[]
+  recurringRules    RecurringRule[]
+}
+
+model Category {
+  id             String         @id @default(cuid())
+  name           String
+  kind           CategoryKind
+  sa105Box       String?
+  allowable      Boolean        @default(true)
+  transactions   Transaction[]
+  recurringRules RecurringRule[]
+  vendors        Vendor[]
+}
+
+model Transaction {
+  id           String       @id @default(cuid())
+  propertyId   String
+  property     Property     @relation(fields: [propertyId], references: [id])
+  date         DateTime
+  amountPence  Int
+  direction    Direction
+  categoryId   String
+  category     Category     @relation(fields: [categoryId], references: [id])
+  vendorId     String?
+  vendor       Vendor?      @relation(fields: [vendorId], references: [id])
+  description  String?
+  recurringId  String?
+  recurring    RecurringRule? @relation(fields: [recurringId], references: [id])
+  source       TxnSource    @default(manual)
+  attachmentId String?
+  attachment   Attachment?  @relation(fields: [attachmentId], references: [id])
+  createdAt    DateTime     @default(now())
+
+  @@index([propertyId, date])
+}
+
+model RecurringRule {
+  id                String         @id @default(cuid())
+  propertyId        String
+  property          Property       @relation(fields: [propertyId], references: [id])
+  categoryId        String
+  category          Category       @relation(fields: [categoryId], references: [id])
+  vendorId          String?
+  vendor            Vendor?        @relation(fields: [vendorId], references: [id])
+  amountPence       Int
+  direction         Direction
+  frequency         RecurFrequency
+  dayOfMonth        Int
+  startDate         DateTime
+  endDate           DateTime?
+  lastGeneratedDate DateTime?
+  transactions      Transaction[]
+}
+
+model Attachment {
+  id            String        @id @default(cuid())
+  filePath      String
+  originalName  String
+  extractedData String?
+  transactions  Transaction[]
+  createdAt     DateTime      @default(now())
+}
+
+model TaxYearProfile {
+  id                   String  @id @default(cuid())
+  taxYear              String  @unique
+  otherIncomePence     Int     @default(0)
+  region               Region  @default(englandWalesNI)
+  basis                Basis   @default(cash)
+  usePropertyAllowance Boolean @default(false)
+}
