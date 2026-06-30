@@ -46,4 +46,16 @@ describe("transactions data layer", () => {
     expect(rows[0].amountPence).toBe(200);
     expect(rows[0].category.sa105Box).toBe("20");
   });
+  it("bulk-creates imported transactions tagged as imported", async () => {
+    const property = await getOrCreateDefaultProperty();
+    const categoryId = await rentCategoryId();
+    const { bulkCreateTransactions } = await import("./transactions");
+    const count = await bulkCreateTransactions([
+      { propertyId: property.id, categoryId, date: new Date("2025-06-01"), amountPence: 100, direction: "in", description: "a" },
+      { propertyId: property.id, categoryId, date: new Date("2025-06-02"), amountPence: 200, direction: "out", description: "b" },
+    ]);
+    expect(count).toBe(2);
+    const all = await listTransactions(property.id);
+    expect(all.every((t) => t.source === "imported")).toBe(true);
+  });
 });

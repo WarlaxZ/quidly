@@ -45,3 +45,11 @@ export function listTransactionsFiltered(propertyId: string, filter: Transaction
     include: { category: true, vendor: true },
   });
 }
+
+export async function bulkCreateTransactions(rows: TransactionInput[]): Promise<number> {
+  if (rows.length === 0) return 0;
+  const result = await prisma.transaction.createMany({
+    data: rows.map((r) => ({ ...r, source: "imported" as const })),
+  });
+  return result.count;
+}
