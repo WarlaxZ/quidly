@@ -4,11 +4,11 @@ import { getTaxYear } from "../../../lib/tax/taxYear";
 import { formatGBP, penceToPounds } from "../../../lib/tax/money";
 import { saveOtherIncomeAction } from "./actions";
 
-export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ ty?: string }> }) {
-  const { ty } = await searchParams;
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ ty?: string; error?: string }> }) {
+  const { ty, error } = await searchParams;
   const taxYear = ty ?? getTaxYear(new Date());
   const property = await getOrCreateDefaultProperty();
-  const { summary, otherIncomePence } = await getTaxYearSummary(property.id, taxYear);
+  const { summary, otherIncomePence, usePropertyAllowance } = await getTaxYearSummary(property.id, taxYear);
 
   const Card = ({ label, pence, accent }: { label: string; pence: number; accent?: boolean }) => (
     <div className="rounded border p-4">
@@ -23,6 +23,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <h1 className="text-2xl font-semibold">Dashboard</h1>
         <span className="text-gray-500">Tax year {taxYear}</span>
       </div>
+      {error && <p className="rounded bg-red-100 px-3 py-2 text-red-700">{error}</p>}
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
         <Card label="Rental income" pence={summary.incomePence} />
         <Card label="Allowable expenses" pence={summary.expensesPence} />
@@ -42,6 +43,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <label className="block">
           <span className="block text-sm">Your other (non-property) income this year</span>
           <input name="otherIncome" defaultValue={penceToPounds(otherIncomePence)} className="border px-2 py-1" />
+        </label>
+        <label className="flex items-center gap-2">
+          <input type="checkbox" name="usePropertyAllowance" defaultChecked={usePropertyAllowance} />
+          <span className="text-sm">Use £1,000 property allowance instead of expenses</span>
         </label>
         <button type="submit" className="bg-blue-600 px-3 py-1 text-white">Update estimate</button>
       </form>

@@ -8,7 +8,7 @@ const BOX_LABELS: Record<string, string> = {
   "21": "Other property income",
   "24": "Rent, rates, insurance, ground rents",
   "25": "Property repairs and maintenance",
-  "27": "Legal, management and other professional fees",
+  "27": "Legal, management, other professional fees",
   "28": "Costs of services provided, including wages",
   "29": "Other allowable property expenses",
   "44": "Residential finance costs (mortgage interest)",
