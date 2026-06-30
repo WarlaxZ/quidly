@@ -39,7 +39,7 @@ const SCOTLAND_2025_26: TaxBands = {
     { widthPence: 11_685_00, rateBps: 2000 },
     { widthPence: 17_101_00, rateBps: 2100 },
     { widthPence: 31_338_00, rateBps: 4200 },
-    { widthPence: null, rateBps: 4500 }, // advanced (fills to top threshold)
+    { widthPence: null, rateBps: 4500 }, // advanced 45% (fills to topThresholdPence; 48% top rate applies above it)
   ],
 };
 

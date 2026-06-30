@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { incomeTaxOn, estimatePropertyTax } from "./incomeTax";
 
-describe("incomeTaxOn (2025-26 EWNI)", () => {
+describe("incomeTaxOn (2025-26)", () => {
   it("is zero below the personal allowance", () => {
     expect(incomeTaxOn(10_000_00, "2025-26", "englandWalesNI")).toBe(0);
   });
