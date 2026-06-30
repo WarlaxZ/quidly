@@ -46,6 +46,15 @@ describe("getScenarioInput", () => {
     expect(input.incomePence).toBe(10_000_00); // company's 9,000 excluded
   });
 
+  it("'all' basis also excludes transactions outside the tax year", async () => {
+    const a = await createProperty({ name: "A", ownershipType: "personal" });
+    const rent = await cat("Rent received");
+    await createTransaction({ propertyId: a.id, categoryId: rent, date: new Date("2025-06-01"), amountPence: 4_000_00, direction: "in" });
+    await createTransaction({ propertyId: a.id, categoryId: rent, date: new Date("2024-06-01"), amountPence: 9_999_00, direction: "in" });
+    const input = await getScenarioInput({ taxYear: "2025-26", basis: "all" });
+    expect(input.incomePence).toBe(4_000_00);
+  });
+
   it("a single-property basis ignores transactions outside the tax year", async () => {
     const a = await createProperty({ name: "A", ownershipType: "personal" });
     const rent = await cat("Rent received");
