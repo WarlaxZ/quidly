@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireSession } from "../../../lib/auth/session";
 import { createCompany, updateCompany, deleteCompanyIfEmpty } from "../../../lib/data/company";
+import { createLedgerEntry, deleteLedgerEntry } from "../../../lib/data/companyLedger";
+import { poundsToPence } from "../../../lib/tax/money";
 
 function dayMonth(formData: FormData): { day: number; month: number } {
   return { day: Number(formData.get("accountingYearEndDay")), month: Number(formData.get("accountingYearEndMonth")) };
@@ -43,4 +45,31 @@ export async function deleteCompanyAction(formData: FormData) {
   }
   revalidatePath("/companies");
   redirect("/companies");
+}
+
+const LEDGER_KINDS = ["dividend", "director_loan_in", "director_loan_out"] as const;
+
+export async function addLedgerEntryAction(formData: FormData) {
+  await requireSession();
+  const companyId = String(formData.get("companyId"));
+  const base = `/companies/${companyId}/ledger`;
+  const kind = String(formData.get("kind"));
+  if (!(LEDGER_KINDS as readonly string[]).includes(kind)) redirect(`${base}?error=${encodeURIComponent("Choose a valid entry type.")}`);
+  const dateStr = String(formData.get("date") ?? "");
+  const date = new Date(dateStr);
+  if (!dateStr || Number.isNaN(date.getTime())) redirect(`${base}?error=${encodeURIComponent("Enter a valid date.")}`);
+  const amountPence = poundsToPence(Number(formData.get("amount")));
+  if (!Number.isFinite(amountPence) || amountPence <= 0) redirect(`${base}?error=${encodeURIComponent("Enter an amount greater than zero.")}`);
+  const note = String(formData.get("note") ?? "").trim() || null;
+  await createLedgerEntry({ companyId, date, kind: kind as (typeof LEDGER_KINDS)[number], amountPence, note });
+  revalidatePath(base);
+  redirect(base);
+}
+
+export async function deleteLedgerEntryAction(formData: FormData) {
+  await requireSession();
+  const companyId = String(formData.get("companyId"));
+  await deleteLedgerEntry(String(formData.get("id")));
+  revalidatePath(`/companies/${companyId}/ledger`);
+  redirect(`/companies/${companyId}/ledger`);
 }
