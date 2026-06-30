@@ -4,9 +4,9 @@ export interface DividendRates {
   paTaperStartPence: number;     // income above which the personal allowance tapers
   basicLimitPence: number;       // width of the basic-rate band above the personal allowance
   additionalStartPence: number;  // total income at which the additional rate begins
-  ordinaryRate: number;
-  upperRate: number;
-  additionalRate: number;
+  ordinaryBps: number;     // basis points, e.g. 875 = 8.75%
+  upperBps: number;
+  additionalBps: number;
 }
 
 const DIVIDEND_2025_26: DividendRates = {
@@ -15,9 +15,9 @@ const DIVIDEND_2025_26: DividendRates = {
   paTaperStartPence: 100_000_00,
   basicLimitPence: 37_700_00,
   additionalStartPence: 125_140_00,
-  ordinaryRate: 0.0875,
-  upperRate: 0.3375,
-  additionalRate: 0.3935,
+  ordinaryBps: 875,
+  upperBps: 3375,
+  additionalBps: 3935,
 };
 
 const DIVIDEND_RATES: Record<string, DividendRates> = { "2025-26": DIVIDEND_2025_26 };
@@ -48,22 +48,22 @@ export function dividendTax(dividendPence: number, otherIncomePence: number, tax
   let cursor = Math.max(otherIncomePence, pa);
   let remaining = Math.max(0, total - cursor);
   let allowanceLeft = r.allowancePence;
-  let tax = 0;
+  let taxNumerator = 0; // sum of (taxable pence × basis points); divided by 10,000 at the end
 
   while (remaining > 0) {
-    let rate: number;
+    let bps: number;
     let bandEnd: number;
-    if (cursor < basicTop) { rate = r.ordinaryRate; bandEnd = basicTop; }
-    else if (cursor < addStart) { rate = r.upperRate; bandEnd = addStart; }
-    else { rate = r.additionalRate; bandEnd = Infinity; }
+    if (cursor < basicTop) { bps = r.ordinaryBps; bandEnd = basicTop; }
+    else if (cursor < addStart) { bps = r.upperBps; bandEnd = addStart; }
+    else { bps = r.additionalBps; bandEnd = Infinity; }
 
     const slice = Math.min(remaining, bandEnd - cursor);
     const zeroPart = Math.min(slice, allowanceLeft); // dividend allowance: 0% but uses band space
-    tax += (slice - zeroPart) * rate;
+    taxNumerator += (slice - zeroPart) * bps;
     allowanceLeft -= zeroPart;
     cursor += slice;
     remaining -= slice;
   }
 
-  return Math.round(tax);
+  return Math.round(taxNumerator / 10000);
 }
