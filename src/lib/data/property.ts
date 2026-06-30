@@ -10,6 +10,7 @@ export interface PropertyInput {
   name: string;
   address?: string | null;
   ownershipType?: "personal" | "company";
+  companyId?: string | null;
 }
 
 export function updateProperty(id: string, input: Partial<PropertyInput>) {
@@ -17,7 +18,7 @@ export function updateProperty(id: string, input: Partial<PropertyInput>) {
 }
 
 export function createProperty(input: PropertyInput) {
-  return prisma.property.create({ data: { name: input.name, address: input.address ?? null, ownershipType: input.ownershipType ?? "personal" } });
+  return prisma.property.create({ data: { name: input.name, address: input.address ?? null, ownershipType: input.ownershipType ?? "personal", companyId: input.companyId ?? null } });
 }
 
 export function getProperty(id: string) {
