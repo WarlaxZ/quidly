@@ -19,6 +19,10 @@ describe("incomeTaxOn (2025-26 EWNI)", () => {
     // £130,000 income: PA fully tapered to £0; tax = £44,703.00
     expect(incomeTaxOn(130_000_00, "2025-26", "englandWalesNI")).toBe(44_703_00);
   });
+  it("applies Scottish bands (2025-26)", () => {
+    // £50,000 Scottish: 2306*.19 + 11685*.20 + 17101*.21 + (37430-2306-11685-17101)*.42 = 902831 pence
+    expect(incomeTaxOn(50_000_00, "2025-26", "scotland")).toBe(9_028_31);
+  });
 });
 
 describe("estimatePropertyTax", () => {
