@@ -32,10 +32,12 @@ export async function getDirectorLoanSummary(
   const s455Pence = s455Charge(balancePence, taxYear);
 
   const ty = taxYearRange(taxYear);
-  const tyEnd = new Date(ty.end.getTime() - 1); // 5 April (the range end is the exclusive 6 April)
+  // 1ms before the exclusive 6 April end → includes any entry dated 5 April regardless of time-of-day.
+  const tyEnd = new Date(ty.end.getTime() - 1);
   const startBalancePence = directorLoanBalance(entries, ty.start);
   const endBalancePence = directorLoanBalance(entries, tyEnd);
-  const bik = beneficialLoanBenefit({ startBalancePence, endBalancePence, interestPaidPence, year: taxYear });
+  const interestPaid = Math.max(0, interestPaidPence);
+  const bik = beneficialLoanBenefit({ startBalancePence, endBalancePence, interestPaidPence: interestPaid, year: taxYear });
 
   return { balancePence, s455Pence, taxYear, bik };
 }

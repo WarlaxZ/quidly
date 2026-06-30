@@ -25,4 +25,13 @@ describe("getDirectorLoanSummary", () => {
   it("returns null for a missing company", async () => {
     expect(await getDirectorLoanSummary("nope", 2025)).toBeNull();
   });
+
+  it("returns a zeroed summary for a company with no loan entries", async () => {
+    const co = await createCompany({ name: "Empty", accountingYearEndDay: 31, accountingYearEndMonth: 12 });
+    const s = await getDirectorLoanSummary(co.id, 2025);
+    expect(s).not.toBeNull();
+    expect(s!.balancePence).toBe(0);
+    expect(s!.s455Pence).toBe(0);
+    expect(s!.bik).toEqual({ applies: false, bikPence: 0, class1aNicPence: 0 });
+  });
 });
