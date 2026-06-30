@@ -1,11 +1,14 @@
 import { listProperties } from "../../../lib/data/activeProperty";
 import { getPropertyCounts } from "../../../lib/data/property";
+import { listCompanies } from "../../../lib/data/company";
 import { addPropertyAction, deletePropertyAction } from "./actions";
 
 export default async function PropertiesPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const { error } = await searchParams;
   const properties = await listProperties();
   const counts = await Promise.all(properties.map((p) => getPropertyCounts(p.id)));
+  const companies = await listCompanies();
+  const companyName = new Map(companies.map((c) => [c.id, c.name]));
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -19,6 +22,10 @@ export default async function PropertiesPage({ searchParams }: { searchParams: P
           <option value="personal">Personal</option>
           <option value="company">Company</option>
         </select>
+        <select name="companyId" defaultValue="" className="border px-2 py-1">
+          <option value="">— company (if company-owned) —</option>
+          {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
         <button type="submit" className="bg-blue-600 px-3 py-1 text-white">Add property</button>
       </form>
 
@@ -29,7 +36,7 @@ export default async function PropertiesPage({ searchParams }: { searchParams: P
           <li key={p.id} className="flex items-center justify-between px-3 py-2">
             <span>
               {p.name}{p.address ? ` — ${p.address}` : ""} · <span className="text-gray-500">{p.ownershipType}</span>
-              {p.ownershipType === "company" && <span className="ml-1 text-xs text-amber-700">(company tax reporting not built yet)</span>}
+              {p.companyId && <> · <span className="text-gray-500">{companyName.get(p.companyId) ?? "?"}</span></>}
               <span className="ml-2 text-xs text-gray-400">{counts[i].transactions} txns</span>
             </span>
             <span className="flex items-center gap-2">

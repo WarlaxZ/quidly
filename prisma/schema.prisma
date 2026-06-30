@@ -54,6 +54,8 @@ model Property {
   transactions    Transaction[]
   recurringRules  RecurringRule[]
   createdAt       DateTime      @default(now())
+  companyId       String?
+  company         Company?      @relation(fields: [companyId], references: [id])
 }
 
 model Vendor {
@@ -144,4 +146,13 @@ model LoginAttempt {
   createdAt DateTime @default(now())
 
   @@index([createdAt])
+}
+
+model Company {
+  id                     String     @id @default(cuid())
+  name                   String
+  accountingYearEndDay   Int
+  accountingYearEndMonth Int
+  createdAt              DateTime   @default(now())
+  properties             Property[]
 }
