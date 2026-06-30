@@ -20,7 +20,7 @@ describe("incomeTaxOn (2025-26 EWNI)", () => {
     expect(incomeTaxOn(130_000_00, "2025-26", "englandWalesNI")).toBe(44_703_00);
   });
   it("applies Scottish bands (2025-26)", () => {
-    // £50,000 Scottish: 2306*.19 + 11685*.20 + 17101*.21 + (37430-2306-11685-17101)*.42 = 902831 pence
+    // £50,000 Scottish (pence): 230600*.19 + 1168500*.20 + 1710100*.21 + 633800*.42 = 902831
     expect(incomeTaxOn(50_000_00, "2025-26", "scotland")).toBe(9_028_31);
   });
 });

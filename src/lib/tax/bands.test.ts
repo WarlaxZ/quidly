@@ -12,7 +12,7 @@ describe("getBands", () => {
       { widthPence: null, rate: 0.4 },
     ]);
   });
-  it("returns 2025-26 Scotland bands with 6 rates total", () => {
+  it("returns 2025-26 Scotland bands (5 bands + topRate)", () => {
     const b = getBands("2025-26", "scotland");
     expect(b.bands).toHaveLength(5);
     expect(b.topRate).toBeCloseTo(0.48);

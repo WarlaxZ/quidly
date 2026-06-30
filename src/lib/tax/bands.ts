@@ -37,7 +37,7 @@ const SCOTLAND_2025_26: TaxBands = {
     { widthPence: 11_685_00, rate: 0.2 },
     { widthPence: 17_101_00, rate: 0.21 },
     { widthPence: 31_338_00, rate: 0.42 },
-    { widthPence: null, rate: 0.45 },
+    { widthPence: null, rate: 0.45 }, // advanced (fills to top threshold)
   ],
 };
 
@@ -51,5 +51,8 @@ export function getBands(taxYear: string, region: Region): TaxBands {
   const year = BANDS[taxYear] ?? BANDS[LATEST_YEAR];
   const bands = year[region] ?? year.englandWalesNI;
   if (!bands) throw new Error(`No tax bands configured for ${taxYear}/${region}`);
+  if (bands.bands.length === 0 || bands.bands[bands.bands.length - 1].widthPence !== null) {
+    throw new Error(`Tax bands for ${taxYear}/${region}: the final band must have widthPence: null (fills to the top threshold)`);
+  }
   return bands;
 }
