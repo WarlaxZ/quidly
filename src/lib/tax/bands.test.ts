@@ -6,17 +6,17 @@ describe("getBands", () => {
     const b = getBands("2025-26", "englandWalesNI");
     expect(b.personalAllowancePence).toBe(12_570_00);
     expect(b.topThresholdPence).toBe(125_140_00);
-    expect(b.topRate).toBeCloseTo(0.45);
+    expect(b.topRateBps).toBe(4500);
     expect(b.bands).toEqual([
-      { widthPence: 37_700_00, rate: 0.2 },
-      { widthPence: null, rate: 0.4 },
+      { widthPence: 37_700_00, rateBps: 2000 },
+      { widthPence: null, rateBps: 4000 },
     ]);
   });
   it("returns 2025-26 Scotland bands (5 bands + topRate)", () => {
     const b = getBands("2025-26", "scotland");
     expect(b.bands).toHaveLength(5);
-    expect(b.topRate).toBeCloseTo(0.48);
-    expect(b.bands[0]).toEqual({ widthPence: 2_306_00, rate: 0.19 });
+    expect(b.topRateBps).toBe(4800);
+    expect(b.bands[0]).toEqual({ widthPence: 2_306_00, rateBps: 1900 });
   });
   it("falls back to the latest year and EWNI", () => {
     expect(() => getBands("2099-00", "englandWalesNI")).not.toThrow();

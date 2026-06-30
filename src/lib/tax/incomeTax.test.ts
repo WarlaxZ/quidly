@@ -23,6 +23,10 @@ describe("incomeTaxOn (2025-26 EWNI)", () => {
     // £50,000 Scottish (pence): 230600*.19 + 1168500*.20 + 1710100*.21 + 633800*.42 = 902831
     expect(incomeTaxOn(50_000_00, "2025-26", "scotland")).toBe(9_028_31);
   });
+  it("rounds half-up at a fraction-prone Scottish input (basis points are exact)", () => {
+    // £12,570.50 income: £0.50 taxable at the 19% starter rate = 9.5p → half-up to 10p.
+    expect(incomeTaxOn(12_570_50, "2025-26", "scotland")).toBe(10);
+  });
 });
 
 describe("estimatePropertyTax", () => {
