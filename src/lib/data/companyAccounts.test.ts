@@ -35,4 +35,15 @@ describe("getCompanyAccounts", () => {
   it("returns null for an unknown company", async () => {
     expect(await getCompanyAccounts("nope", 2026)).toBeNull();
   });
+  it("excludes other companies' properties", async () => {
+    const c1 = await createCompany({ name: "C1", accountingYearEndDay: 31, accountingYearEndMonth: 3 });
+    const c2 = await createCompany({ name: "C2", accountingYearEndDay: 31, accountingYearEndMonth: 3 });
+    const p1 = await createProperty({ name: "P1", ownershipType: "company", companyId: c1.id });
+    const p2 = await createProperty({ name: "P2", ownershipType: "company", companyId: c2.id });
+    const rent = await cat("Rent received");
+    await createTransaction({ propertyId: p1.id, categoryId: rent, date: new Date("2025-09-01"), amountPence: 10_000_00, direction: "in" });
+    await createTransaction({ propertyId: p2.id, categoryId: rent, date: new Date("2025-09-01"), amountPence: 99_000_00, direction: "in" });
+    const acc = await getCompanyAccounts(c1.id, 2026);
+    expect(acc!.incomePence).toBe(10_000_00); // only C1, not C2's £99k
+  });
 });

@@ -13,6 +13,9 @@ export async function addCompanyAction(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   if (!name) redirect("/companies?error=Name+required");
   const { day, month } = dayMonth(formData);
+  if (!Number.isInteger(day) || day < 1 || day > 31 || !Number.isInteger(month) || month < 1 || month > 12) {
+    redirect("/companies?error=" + encodeURIComponent("Enter a valid year-end day (1–31) and month."));
+  }
   await createCompany({ name, accountingYearEndDay: day, accountingYearEndMonth: month });
   revalidatePath("/companies");
   redirect("/companies");
@@ -22,6 +25,9 @@ export async function updateCompanyAction(formData: FormData) {
   await requireSession();
   const id = String(formData.get("id"));
   const { day, month } = dayMonth(formData);
+  if (!Number.isInteger(day) || day < 1 || day > 31 || !Number.isInteger(month) || month < 1 || month > 12) {
+    redirect("/companies?error=" + encodeURIComponent("Enter a valid year-end day (1–31) and month."));
+  }
   await updateCompany(id, { name: String(formData.get("name") ?? "").trim() || "Unnamed", accountingYearEndDay: day, accountingYearEndMonth: month });
   revalidatePath("/companies");
   redirect("/companies");

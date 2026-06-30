@@ -5,7 +5,7 @@ import { formatGBP } from "../../../../../lib/tax/money";
 export default async function CompanyAccountsPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ year?: string }> }) {
   const { id } = await params;
   const { year } = await searchParams;
-  const periodYear = year ? Number(year) : new Date().getUTCFullYear();
+  const periodYear = year && !Number.isNaN(Number(year)) ? Number(year) : new Date().getUTCFullYear();
   const accounts = await getCompanyAccounts(id, periodYear);
   if (!accounts) notFound();
 
