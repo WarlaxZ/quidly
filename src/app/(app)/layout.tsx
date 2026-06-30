@@ -1,20 +1,22 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-const NAV = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/transactions", label: "Transactions" },
-  { href: "/import", label: "Import" },
-  { href: "/recurring", label: "Recurring" },
-  { href: "/sa105", label: "SA105" },
-  { href: "/vendors", label: "Vendors" },
-  { href: "/settings", label: "Settings" },
-];
+import { isExtractionEnabled } from "../../lib/extraction/config";
 export default function AppLayout({ children }: { children: ReactNode }) {
+  const nav = [
+    { href: "/dashboard", label: "Dashboard" },
+    { href: "/transactions", label: "Transactions" },
+    { href: "/import", label: "Import" },
+    ...(isExtractionEnabled() ? [{ href: "/scan", label: "Scan" }] : []),
+    { href: "/recurring", label: "Recurring" },
+    { href: "/sa105", label: "SA105" },
+    { href: "/vendors", label: "Vendors" },
+    { href: "/settings", label: "Settings" },
+  ];
   return (
     <div className="min-h-screen">
       <nav className="flex gap-4 border-b px-6 py-4">
         <span className="font-semibold">Property Accounts</span>
-        {NAV.map((n) => (
+        {nav.map((n) => (
           <Link key={n.href} href={n.href} className="text-blue-600 hover:underline">{n.label}</Link>
         ))}
         <form method="post" action="/api/logout" className="ml-auto">

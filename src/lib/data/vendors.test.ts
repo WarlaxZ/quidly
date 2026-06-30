@@ -29,4 +29,11 @@ describe("vendors data layer", () => {
     await deleteVendor(v.id);
     expect(await listVendors()).toHaveLength(0);
   });
+  it("matches a vendor by name case-insensitively", async () => {
+    await createVendor({ name: "Acme Lettings" });
+    const { matchVendorByName } = await import("./vendors");
+    expect((await matchVendorByName("acme lettings"))?.name).toBe("Acme Lettings");
+    expect(await matchVendorByName("unknown")).toBeNull();
+    expect(await matchVendorByName("  ")).toBeNull();
+  });
 });
