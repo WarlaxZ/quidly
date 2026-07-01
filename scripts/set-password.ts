@@ -32,16 +32,18 @@ async function main() {
     process.exit(1);
   }
   const hash = await hashPassword(password);
-  const escapedForDotenv = hash.replace(/\$/g, "\\$");
-  console.log("\nAdd these to your .env (and keep them secret):\n");
-  console.log(`AUTH_USERNAME=${username}`);
-  console.log(`AUTH_PASSWORD_HASH=${escapedForDotenv}`);
-  console.log(`\n(The backslashes before $ are required so Next.js's .env loader doesn't`);
-  console.log(` treat the hash as variable references. If you instead set AUTH_PASSWORD_HASH`);
-  console.log(` as a real environment variable, e.g. in Docker/systemd, use the UNescaped hash:`);
-  console.log(`   ${hash})`);
-  console.log(`\nAlso set a long SESSION_SECRET (32+ chars), e.g.:`);
-  console.log(`SESSION_SECRET=$(openssl rand -base64 32)\n`);
+  const escapedForDotenv = hash.replace(/\$/g, "\\$");   // Next.js local-dev .env
+  const escapedForCompose = hash.replace(/\$/g, "$$$$"); // docker compose .env (env_file)
+
+  console.log(`\nAUTH_USERNAME=${username}\n`);
+  console.log("Pick the AUTH_PASSWORD_HASH line for how you run Quidly:\n");
+  console.log("• Local dev (npm run dev — Next reads .env, escape $ with \\):");
+  console.log(`    AUTH_PASSWORD_HASH=${escapedForDotenv}\n`);
+  console.log("• Docker Compose (.env read by docker-compose.yml — double each $):");
+  console.log(`    AUTH_PASSWORD_HASH=${escapedForCompose}\n`);
+  console.log("• A real environment variable (systemd EnvironmentFile, exported var — raw hash):");
+  console.log(`    AUTH_PASSWORD_HASH=${hash}\n`);
+  console.log("Also set a long SESSION_SECRET (32+ chars), e.g.:  openssl rand -base64 32\n");
 }
 
 main();
