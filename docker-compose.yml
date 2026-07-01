@@ -1,0 +1,16 @@
+services:
+  quidly:
+    build: .
+    image: quidly
+    env_file: .env
+    environment:
+      DATABASE_URL: file:/data/quidly.db
+      UPLOAD_DIR: /data/uploads
+    ports:
+      - "3000:3000"
+    volumes:
+      - quidly-data:/data
+    restart: unless-stopped
+
+volumes:
+  quidly-data:
