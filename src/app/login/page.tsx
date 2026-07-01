@@ -3,12 +3,13 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   return (
     <div className="grid min-h-screen place-items-center px-6">
       <div className="reveal w-full max-w-sm">
-        <div className="mb-6 flex items-center gap-3">
+        <div className="mb-2 flex items-center gap-3">
           <span className="grid h-10 w-10 place-items-center rounded-[10px] bg-forest text-forest-ink shadow-[0_6px_16px_-6px_rgba(31,61,48,.7)]">
             <span className="font-display text-xl leading-none">£</span>
           </span>
-          <span className="font-display text-xl font-semibold leading-tight text-ink">Property Accounts</span>
+          <span className="font-display text-xl font-semibold leading-tight text-ink">Quidly</span>
         </div>
+        <p className="mb-6 text-sm text-muted">Self-Assessment, sorted.</p>
 
         <div className="card p-7">
           <h1 className="text-2xl text-ink">Welcome back</h1>

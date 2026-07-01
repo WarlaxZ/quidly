@@ -7,8 +7,8 @@ const sans = Hanken_Grotesk({ subsets: ["latin"], variable: "--font-hanken", dis
 const mono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--font-plex-mono", display: "swap" });
 
 export const metadata: Metadata = {
-  title: "Property Accounts — UK landlord bookkeeping & tax",
-  description: "Beautifully-kept accounts for UK landlords: transactions, SA105, corporation tax, and tax planning.",
+  title: "Quidly — UK landlord bookkeeping & tax",
+  description: "Self-Assessment, sorted. Beautifully-kept accounts, SA105, corporation tax and tax planning for UK landlords.",
 };
 
 export default function RootLayout({
