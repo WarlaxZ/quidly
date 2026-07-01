@@ -1,14 +1,18 @@
 import { getPersonalTaxYearSummary } from "../../../lib/data/personalSummary";
-import { getTaxYear } from "../../../lib/tax/taxYear";
+import { latestConfiguredTaxYear, taxYearOptions, isConfiguredTaxYear } from "../../../lib/tax/taxYear";
 import { formatGBP } from "../../../lib/tax/money";
 import { SA105_BOX_LABELS } from "../../../lib/tax/sa105Labels";
 import { PageHeader } from "../_ui/PageHeader";
 import { EmptyState } from "../_ui/EmptyState";
-import { YearNav } from "../_ui/YearNav";
+import { Banner } from "../_ui/Banner";
 
 export default async function Sa105Page({ searchParams }: { searchParams: Promise<{ ty?: string }> }) {
   const { ty } = await searchParams;
-  const taxYear = ty ?? getTaxYear(new Date());
+  const taxYear = ty ?? latestConfiguredTaxYear();
+  const opts = taxYearOptions();
+  const idx = opts.indexOf(taxYear);
+  const olderYear = idx >= 0 && idx < opts.length - 1 ? opts[idx + 1] : null;
+  const newerYear = idx > 0 ? opts[idx - 1] : null;
   const { summary } = await getPersonalTaxYearSummary(taxYear);
   const boxes = Object.keys(summary.sa105).sort((a, b) => Number(a) - Number(b));
 
@@ -16,10 +20,18 @@ export default async function Sa105Page({ searchParams }: { searchParams: Promis
     <div className="mx-auto max-w-3xl space-y-8">
       <div className="reveal" style={{ animationDelay: "0ms" }}>
         <PageHeader title="SA105 summary" subtitle="Aggregated across your personally-owned properties">
-          <YearNav basePath="/sa105" paramKey="ty" current={taxYear} label="Tax year" />
+          <div className="flex items-center gap-1.5">
+            {olderYear && <a href={`/sa105?ty=${olderYear}`} className="grid h-8 w-8 place-items-center rounded-lg border border-line-strong text-muted transition-colors hover:border-forest hover:text-forest" aria-label={`Previous tax year ${olderYear}`}>‹</a>}
+            <span className="pill">Tax year {taxYear}</span>
+            {newerYear && <a href={`/sa105?ty=${newerYear}`} className="grid h-8 w-8 place-items-center rounded-lg border border-line-strong text-muted transition-colors hover:border-forest hover:text-forest" aria-label={`Next tax year ${newerYear}`}>›</a>}
+          </div>
           <a className="btn btn-ghost" href={`/export/sa105.pdf?ty=${taxYear}`}>Download PDF</a>
         </PageHeader>
       </div>
+
+      {!isConfiguredTaxYear(taxYear) && (
+        <Banner variant="info">Tax estimate uses {latestConfiguredTaxYear()} rates — {taxYear} isn&apos;t configured yet.</Banner>
+      )}
 
       <p className="reveal text-sm text-muted" style={{ animationDelay: "60ms" }}>
         Figures to enter on the UK property pages (SA105) of your Self Assessment. Box 44 (finance costs) is a

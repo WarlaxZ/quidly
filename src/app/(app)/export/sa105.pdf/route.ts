@@ -1,12 +1,12 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { getPersonalTaxYearSummary } from "../../../../lib/data/personalSummary";
-import { getTaxYear } from "../../../../lib/tax/taxYear";
+import { latestConfiguredTaxYear } from "../../../../lib/tax/taxYear";
 import { formatGBP } from "../../../../lib/tax/money";
 import { SA105_BOX_LABELS } from "../../../../lib/tax/sa105Labels";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
-  const taxYear = url.searchParams.get("ty") ?? getTaxYear(new Date());
+  const taxYear = url.searchParams.get("ty") ?? latestConfiguredTaxYear();
   const { summary } = await getPersonalTaxYearSummary(taxYear);
   const boxes = Object.keys(summary.sa105).sort((a, b) => Number(a) - Number(b));
 

@@ -5,6 +5,7 @@ import { getDirectorLoanSummary } from "../../../../../lib/data/directorLoan";
 import { formatGBP, poundsToPence } from "../../../../../lib/tax/money";
 import { PageHeader } from "../../../_ui/PageHeader";
 import { Banner } from "../../../_ui/Banner";
+import { latestConfiguredTaxYear } from "../../../../../lib/tax/taxYear";
 import { YearNav } from "../../../_ui/YearNav";
 import { MoneyInput } from "../../../_ui/MoneyInput";
 
@@ -53,6 +54,10 @@ export default async function CompanyAccountsPage({ params, searchParams }: { pa
           </a>
         </PageHeader>
       </div>
+
+      {!accounts.ctYearConfigured && (
+        <Banner variant="info">Corporation tax uses {latestConfiguredTaxYear()} rates — the rates for this period ({accounts.ctYear}) aren&apos;t configured yet.</Banner>
+      )}
 
       {/* P&L */}
       <section className="reveal space-y-3" style={{ animationDelay: "60ms" }}>

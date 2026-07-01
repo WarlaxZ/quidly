@@ -16,3 +16,20 @@ export function taxYearRange(taxYear: string): { start: Date; end: Date } {
   const end = new Date(Date.UTC(startYear + 1, 3, 6)); // exclusive
   return { start, end };
 }
+
+/** Tax years for which every rate engine (bands, corporation tax, dividend, NIC) has real config.
+ *  Update this list — and each engine's per-year config — when a new year's figures are confirmed. */
+export const CONFIGURED_TAX_YEARS = ["2025-26"] as const;
+
+export function latestConfiguredTaxYear(): string {
+  return CONFIGURED_TAX_YEARS[CONFIGURED_TAX_YEARS.length - 1];
+}
+
+export function isConfiguredTaxYear(taxYear: string): boolean {
+  return (CONFIGURED_TAX_YEARS as readonly string[]).includes(taxYear);
+}
+
+/** Year values for pickers, newest first. */
+export function taxYearOptions(): string[] {
+  return [...CONFIGURED_TAX_YEARS].reverse();
+}
