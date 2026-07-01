@@ -5,7 +5,6 @@ import { latestConfiguredTaxYear, taxYearOptions, isConfiguredTaxYear } from "..
 import { formatGBP, penceToPounds, poundsToPence } from "../../../lib/tax/money";
 import type { Region } from "../../../lib/tax/types";
 import { PageHeader } from "../_ui/PageHeader";
-import { YearNav } from "../_ui/YearNav";
 import { MoneyInput } from "../_ui/MoneyInput";
 import { Banner } from "../_ui/Banner";
 
@@ -53,7 +52,7 @@ export default async function PlannerPage({ searchParams }: { searchParams: Prom
     <div className="mx-auto max-w-5xl space-y-8">
       <div className="reveal" style={{ animationDelay: "0ms" }}>
         <PageHeader title="What-if planner" subtitle="Compare how you hold your property">
-          <YearNav basePath="/planner" paramKey="ty" current={taxYear} label="Tax year" extraQuery={{ basis }} />
+          <span className="pill">Tax year {taxYear}</span>
         </PageHeader>
       </div>
 
