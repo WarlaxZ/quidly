@@ -25,10 +25,12 @@ export async function addTransactionAction(formData: FormData) {
     description: String(formData.get("description") ?? "") || null,
   });
   revalidatePath("/transactions");
+  redirect("/transactions?ok=Transaction+added");
 }
 export async function deleteTransactionAction(formData: FormData) {
   await requireSession();
   const id = String(formData.get("id") ?? "");
   if (id) await deleteTransaction(id);
   revalidatePath("/transactions");
+  redirect("/transactions?ok=Transaction+deleted");
 }

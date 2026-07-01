@@ -24,5 +24,5 @@ export async function updateTransactionAction(formData: FormData) {
     description: String(formData.get("description") ?? "") || null,
   });
   revalidatePath("/transactions");
-  redirect("/transactions");
+  redirect("/transactions?ok=Transaction+updated");
 }
