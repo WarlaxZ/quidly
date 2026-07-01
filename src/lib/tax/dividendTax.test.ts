@@ -61,3 +61,10 @@ describe("dividendTax (2026-27)", () => {
     expect(dividendTax(10_000_00, 200_000_00, "2026-27")).toBe(3_738_25);
   });
 });
+
+describe("dividendTax (2027-28, unchanged from 2026-27)", () => {
+  it("matches 2026-27 (dividends did not change again in 2027-28)", () => {
+    expect(dividendTax(10_000_00, 60_000_00, "2027-28")).toBe(dividendTax(10_000_00, 60_000_00, "2026-27"));
+    expect(dividendTax(10_000_00, 20_000_00, "2027-28")).toBe(1_021_25);
+  });
+});

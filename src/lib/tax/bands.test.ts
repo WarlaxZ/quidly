@@ -34,6 +34,14 @@ describe("getBands", () => {
     expect(b.bands[0]).toEqual({ widthPence: 3_967_00, rateBps: 1900 }); // starter 19% → £16,537
     expect(b.bands[1]).toEqual({ widthPence: 12_989_00, rateBps: 2000 }); // basic 20% → £29,526
   });
+  it("configures 2027-28: E/W/NI property surcharge 200bps, Scotland provisional (no surcharge)", () => {
+    const ewni = getBands("2027-28", "englandWalesNI");
+    expect(ewni.propertyRateSurchargeBps).toBe(200);
+    expect(ewni.provisional ?? false).toBe(false);
+    const scot = getBands("2027-28", "scotland");
+    expect(scot.provisional).toBe(true);
+    expect(scot.propertyRateSurchargeBps ?? 0).toBe(0);
+  });
   it("falls back to the latest year and EWNI", () => {
     expect(() => getBands("2099-00", "englandWalesNI")).not.toThrow();
   });

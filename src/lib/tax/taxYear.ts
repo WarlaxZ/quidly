@@ -19,7 +19,7 @@ export function taxYearRange(taxYear: string): { start: Date; end: Date } {
 
 /** Tax years for which every rate engine (bands, corporation tax, dividend, NIC) has real config.
  *  Update this list — and each engine's per-year config — when a new year's figures are confirmed. */
-export const CONFIGURED_TAX_YEARS = ["2025-26", "2026-27"] as const;
+export const CONFIGURED_TAX_YEARS = ["2025-26", "2026-27", "2027-28"] as const;
 
 export function latestConfiguredTaxYear(): string {
   return CONFIGURED_TAX_YEARS[CONFIGURED_TAX_YEARS.length - 1];

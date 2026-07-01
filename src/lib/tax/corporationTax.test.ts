@@ -57,3 +57,11 @@ describe("corporationTax (2026-27, frozen — same as 2025-26)", () => {
     expect(corporationTax(100_000_00, "2026-27")).toEqual(corporationTax(100_000_00, "2025-26"));
   });
 });
+
+describe("corporationTax (2027-28, standing regime — same as 2026-27)", () => {
+  it("matches 2026-27 at every band", () => {
+    expect(corporationTax(40_000_00, "2027-28")).toEqual(corporationTax(40_000_00, "2026-27"));
+    expect(corporationTax(100_000_00, "2027-28")).toEqual(corporationTax(100_000_00, "2026-27"));
+    expect(corporationTax(300_000_00, "2027-28")).toEqual(corporationTax(300_000_00, "2026-27"));
+  });
+});

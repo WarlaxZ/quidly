@@ -74,12 +74,43 @@ const SCOTLAND_2026_27: TaxBands = {
   ],
 };
 
+const ENGLAND_WALES_NI_2027_28: TaxBands = {
+  // Frozen bands (through 2030-31) + property income taxed at +2pp → 22/42/47%; S24 reducer → 22%.
+  personalAllowancePence: 12_570_00,
+  paTaperStartPence: 100_000_00,
+  topThresholdPence: 125_140_00,
+  topRateBps: 4500,
+  bands: [
+    { widthPence: 37_700_00, rateBps: 2000 },
+    { widthPence: null, rateBps: 4000 },
+  ],
+  propertyRateSurchargeBps: 200,
+};
+
+const SCOTLAND_2027_28: TaxBands = {
+  // Provisional: 2027-28 Scottish rates aren't set until the post-election Scottish Budget.
+  // Reuse 2026-27 Scottish rates; NO property surcharge (Holyrood hasn't adopted one).
+  personalAllowancePence: 12_570_00,
+  paTaperStartPence: 100_000_00,
+  topThresholdPence: 125_140_00,
+  topRateBps: 4800,
+  bands: [
+    { widthPence: 3_967_00, rateBps: 1900 },
+    { widthPence: 12_989_00, rateBps: 2000 },
+    { widthPence: 14_136_00, rateBps: 2100 },
+    { widthPence: 31_338_00, rateBps: 4200 },
+    { widthPence: null, rateBps: 4500 },
+  ],
+  provisional: true,
+};
+
 const BANDS: Record<string, Partial<Record<Region, TaxBands>>> = {
   "2025-26": { englandWalesNI: ENGLAND_WALES_NI_2025_26, scotland: SCOTLAND_2025_26 },
   "2026-27": { englandWalesNI: ENGLAND_WALES_NI_2026_27, scotland: SCOTLAND_2026_27 },
+  "2027-28": { englandWalesNI: ENGLAND_WALES_NI_2027_28, scotland: SCOTLAND_2027_28 },
 };
 
-const LATEST_YEAR = "2026-27";
+const LATEST_YEAR = "2027-28";
 
 export function getBands(taxYear: string, region: Region): TaxBands {
   const year = BANDS[taxYear] ?? BANDS[LATEST_YEAR];

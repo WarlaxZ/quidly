@@ -42,8 +42,17 @@ const CT_2026_27: CTRates = {
   marginalFractionBps: 150,
 };
 
-const CT_RATES: Record<string, CTRates> = { "2025-26": CT_2025_26, "2026-27": CT_2026_27 };
-const LATEST_CT_YEAR = "2026-27";
+const CT_2027_28: CTRates = {
+  // Standing regime (thresholds frozen; rates carried forward from 2026-27).
+  lowerLimitPence: 50_000_00,
+  upperLimitPence: 250_000_00,
+  smallBps: 1900,
+  mainBps: 2500,
+  marginalFractionBps: 150,
+};
+
+const CT_RATES: Record<string, CTRates> = { "2025-26": CT_2025_26, "2026-27": CT_2026_27, "2027-28": CT_2027_28 };
+const LATEST_CT_YEAR = "2027-28";
 
 export interface CorporationTaxResult {
   taxPence: number;

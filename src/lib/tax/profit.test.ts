@@ -62,4 +62,8 @@ describe("financeCostReducer", () => {
   it("is zero in a loss year (negative profit)", () => {
     expect(financeCostReducer(5_000_00, -1_000_00)).toBe(0);
   });
+  it("uses a supplied rate — 22% property basic rate (E/W/NI 2027-28)", () => {
+    expect(financeCostReducer(3_000_00, 10_000_00, 2200)).toBe(660_00); // 3,000 × 22%
+    expect(financeCostReducer(3_000_00, 10_000_00)).toBe(600_00);       // default 20% unchanged
+  });
 });

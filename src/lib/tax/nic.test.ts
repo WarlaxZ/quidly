@@ -39,3 +39,10 @@ describe("NIC (2026-27, frozen — same as 2025-26)", () => {
     expect(employeeNIC(60_000_00, "2026-27")).toBe(3_210_60);
   });
 });
+
+describe("NIC (2027-28, standing/frozen — same as 2026-27)", () => {
+  it("keeps employer 15%/£5,000 and employee 8%/2% thresholds", () => {
+    expect(employerNIC(12_570_00, "2027-28")).toBe(1_135_50);
+    expect(employeeNIC(60_000_00, "2027-28")).toBe(3_210_60);
+  });
+});

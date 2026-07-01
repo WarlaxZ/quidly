@@ -24,14 +24,15 @@ describe("taxYearRange", () => {
 
 describe("configured tax years", () => {
   it("latestConfiguredTaxYear is the most recent configured year", () => {
-    expect(latestConfiguredTaxYear()).toBe("2026-27");
+    expect(latestConfiguredTaxYear()).toBe("2027-28");
   });
   it("isConfiguredTaxYear distinguishes configured from not", () => {
     expect(isConfiguredTaxYear("2025-26")).toBe(true);
     expect(isConfiguredTaxYear("2026-27")).toBe(true);
-    expect(isConfiguredTaxYear("2027-28")).toBe(false);
+    expect(isConfiguredTaxYear("2027-28")).toBe(true);
+    expect(isConfiguredTaxYear("2028-29")).toBe(false);
   });
   it("taxYearOptions lists the configured years (newest first)", () => {
-    expect(taxYearOptions()).toEqual(["2026-27", "2025-26"]);
+    expect(taxYearOptions()).toEqual(["2027-28", "2026-27", "2025-26"]);
   });
 });
