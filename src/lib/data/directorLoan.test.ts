@@ -18,8 +18,8 @@ describe("getDirectorLoanSummary", () => {
     expect(s!.balancePence).toBe(20_000_00);     // overdrawn
     expect(s!.s455Pence).toBe(6_750_00);         // 20,000 × 33.75%
     expect(s!.taxYear).toBe("2025-26");          // tax year containing 2025-12-31
-    // TY-start balance (6 Apr 2025) = 12,000; TY-end balance (5 Apr 2026) = 20,000; avg 16,000 × 3.75% = 600 BIK
-    expect(s!.bik).toEqual({ applies: true, bikPence: 600_00, class1aNicPence: 90_00 });
+    // TY-start balance (6 Apr 2025) = 12,000; TY-end balance (5 Apr 2026) = 20,000; avg 16,000 × 2.25% = 360 BIK
+    expect(s!.bik).toEqual({ applies: true, bikPence: 360_00, class1aNicPence: 54_00 });
   });
 
   it("returns null for a missing company", async () => {

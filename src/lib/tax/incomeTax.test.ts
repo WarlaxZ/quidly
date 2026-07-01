@@ -20,8 +20,8 @@ describe("incomeTaxOn (2025-26)", () => {
     expect(incomeTaxOn(130_000_00, "2025-26", "englandWalesNI")).toBe(44_703_00);
   });
   it("applies Scottish bands (2025-26)", () => {
-    // £50,000 Scottish (pence): 230600*.19 + 1168500*.20 + 1710100*.21 + 633800*.42 = 902831
-    expect(incomeTaxOn(50_000_00, "2025-26", "scotland")).toBe(9_028_31);
+    // £50,000 Scottish (pence): 282700*.19 + 1209400*.20 + 1617100*.21 + 633800*.42 = 901380
+    expect(incomeTaxOn(50_000_00, "2025-26", "scotland")).toBe(9_013_80);
   });
   it("rounds half-up at a fraction-prone Scottish input (basis points are exact)", () => {
     // £12,570.50 income: £0.50 taxable at the 19% starter rate = 9.5p → half-up to 10p.

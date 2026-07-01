@@ -33,16 +33,17 @@ describe("beneficialLoanBenefit (2025-26)", () => {
     expect(beneficialLoanBenefit({ startBalancePence: 5_000_00, endBalancePence: 8_000_00, interestPaidPence: 0, year: "2025-26" }))
       .toEqual({ applies: false, bikPence: 0, class1aNicPence: 0 });
   });
-  it("uses the averaging method and 3.75% official rate above the threshold", () => {
-    // avg(12,000, 20,000) = 16,000; × 3.75% = 600 BIK; Class 1A = 15% × 600 = 90
+  it("uses the averaging method and 2.25% official rate above the threshold", () => {
+    // avg(12,000, 20,000) = 16,000; × 2.25% = 360 BIK; Class 1A = 15% × 360 = 54
     expect(beneficialLoanBenefit({ startBalancePence: 12_000_00, endBalancePence: 20_000_00, interestPaidPence: 0, year: "2025-26" }))
-      .toEqual({ applies: true, bikPence: 600_00, class1aNicPence: 90_00 });
+      .toEqual({ applies: true, bikPence: 360_00, class1aNicPence: 54_00 });
   });
   it("subtracts interest the director actually paid, flooring the BIK at zero", () => {
+    // gross BIK 360 − 100 paid = 260; Class 1A = 15% × 260 = 39
     expect(beneficialLoanBenefit({ startBalancePence: 12_000_00, endBalancePence: 20_000_00, interestPaidPence: 100_00, year: "2025-26" }))
-      .toEqual({ applies: true, bikPence: 500_00, class1aNicPence: 75_00 });
+      .toEqual({ applies: true, bikPence: 260_00, class1aNicPence: 39_00 });
     const r = beneficialLoanBenefit({ startBalancePence: 12_000_00, endBalancePence: 12_000_00, interestPaidPence: 500_00, year: "2025-26" });
-    expect(r.bikPence).toBe(0); // 450 gross − 500 paid → floored
+    expect(r.bikPence).toBe(0); // 270 gross − 500 paid → floored
     expect(r.class1aNicPence).toBe(0);
     expect(r.applies).toBe(true);
   });

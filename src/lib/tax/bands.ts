@@ -35,10 +35,10 @@ const SCOTLAND_2025_26: TaxBands = {
   topThresholdPence: 125_140_00,
   topRateBps: 4800,
   bands: [
-    { widthPence: 2_306_00, rateBps: 1900 },
-    { widthPence: 11_685_00, rateBps: 2000 },
-    { widthPence: 17_101_00, rateBps: 2100 },
-    { widthPence: 31_338_00, rateBps: 4200 },
+    { widthPence: 2_827_00, rateBps: 1900 },  // starter 19% → £15,397
+    { widthPence: 12_094_00, rateBps: 2000 }, // basic 20% → £27,491
+    { widthPence: 16_171_00, rateBps: 2100 }, // intermediate 21% → £43,662
+    { widthPence: 31_338_00, rateBps: 4200 }, // higher 42% → £75,000
     { widthPence: null, rateBps: 4500 }, // advanced 45% (fills to topThresholdPence; 48% top rate applies above it)
   ],
 };

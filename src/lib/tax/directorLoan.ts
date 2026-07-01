@@ -17,7 +17,7 @@ export interface DLARates {
 
 const DLA_2025_26: DLARates = {
   s455Bps: 3375,
-  officialRateBps: 375,
+  officialRateBps: 225, // 2.25% (2025-26 HMRC official rate of interest)
   class1aBps: 1500,
   beneficialLoanThresholdPence: 10_000_00,
 };

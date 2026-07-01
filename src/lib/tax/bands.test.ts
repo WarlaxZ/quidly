@@ -16,7 +16,7 @@ describe("getBands", () => {
     const b = getBands("2025-26", "scotland");
     expect(b.bands).toHaveLength(5);
     expect(b.topRateBps).toBe(4800);
-    expect(b.bands[0]).toEqual({ widthPence: 2_306_00, rateBps: 1900 });
+    expect(b.bands[0]).toEqual({ widthPence: 2_827_00, rateBps: 1900 }); // starter 19% → £15,397
   });
   it("falls back to the latest year and EWNI", () => {
     expect(() => getBands("2099-00", "englandWalesNI")).not.toThrow();
