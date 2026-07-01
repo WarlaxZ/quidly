@@ -1,5 +1,6 @@
 import { getPersonalTaxYearSummary, getPerPropertyBreakdown } from "../../../lib/data/personalSummary";
 import { latestConfiguredTaxYear, taxYearOptions, isConfiguredTaxYear } from "../../../lib/tax/taxYear";
+import { isProvisionalTaxYear } from "../../../lib/tax/bands";
 import { formatGBP, penceToPounds } from "../../../lib/tax/money";
 import { saveOtherIncomeAction } from "./actions";
 import { Banner } from "../_ui/Banner";
@@ -45,6 +46,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       {error && <p className="reveal rounded-lg border border-negative/30 bg-negative-soft px-4 py-3 text-sm text-negative">{error}</p>}
       {!isConfiguredTaxYear(taxYear) && (
         <Banner variant="info">Tax estimate uses {latestConfiguredTaxYear()} rates — {taxYear} isn&apos;t configured yet.</Banner>
+      )}
+      {isProvisionalTaxYear(taxYear, region) && (
+        <Banner variant="info">Scottish {taxYear} rates aren&apos;t set yet — figures use the latest known Scottish rates provisionally. Verify when the Scottish Budget confirms them.</Banner>
       )}
 
       {/* Hero: the ledger + the tax */}

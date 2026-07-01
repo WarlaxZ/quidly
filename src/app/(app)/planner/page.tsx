@@ -2,6 +2,7 @@ import { listProperties } from "../../../lib/data/activeProperty";
 import { getScenarioInput } from "../../../lib/data/scenarioInput";
 import { runScenario, type ScenarioInput } from "../../../lib/tax/scenario";
 import { latestConfiguredTaxYear, taxYearOptions, isConfiguredTaxYear } from "../../../lib/tax/taxYear";
+import { isProvisionalTaxYear } from "../../../lib/tax/bands";
 import { formatGBP, penceToPounds, poundsToPence } from "../../../lib/tax/money";
 import type { Region } from "../../../lib/tax/types";
 import { PageHeader } from "../_ui/PageHeader";
@@ -58,6 +59,9 @@ export default async function PlannerPage({ searchParams }: { searchParams: Prom
 
       {!isConfiguredTaxYear(taxYear) && (
         <Banner variant="info">Tax estimate uses {latestConfiguredTaxYear()} rates — {taxYear} isn&apos;t configured yet.</Banner>
+      )}
+      {isProvisionalTaxYear(taxYear, region) && (
+        <Banner variant="info">Scottish {taxYear} rates aren&apos;t set yet — figures use the latest known Scottish rates provisionally. Verify when the Scottish Budget confirms them.</Banner>
       )}
 
       {personalProperties.length === 0 && (

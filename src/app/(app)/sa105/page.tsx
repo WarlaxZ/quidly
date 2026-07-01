@@ -1,5 +1,6 @@
 import { getPersonalTaxYearSummary } from "../../../lib/data/personalSummary";
 import { latestConfiguredTaxYear, taxYearOptions, isConfiguredTaxYear } from "../../../lib/tax/taxYear";
+import { isProvisionalTaxYear } from "../../../lib/tax/bands";
 import { formatGBP } from "../../../lib/tax/money";
 import { SA105_BOX_LABELS } from "../../../lib/tax/sa105Labels";
 import { PageHeader } from "../_ui/PageHeader";
@@ -13,7 +14,7 @@ export default async function Sa105Page({ searchParams }: { searchParams: Promis
   const idx = opts.indexOf(taxYear);
   const olderYear = idx >= 0 && idx < opts.length - 1 ? opts[idx + 1] : null;
   const newerYear = idx > 0 ? opts[idx - 1] : null;
-  const { summary } = await getPersonalTaxYearSummary(taxYear);
+  const { summary, region } = await getPersonalTaxYearSummary(taxYear);
   const boxes = Object.keys(summary.sa105).sort((a, b) => Number(a) - Number(b));
 
   return (
@@ -31,6 +32,9 @@ export default async function Sa105Page({ searchParams }: { searchParams: Promis
 
       {!isConfiguredTaxYear(taxYear) && (
         <Banner variant="info">Tax estimate uses {latestConfiguredTaxYear()} rates — {taxYear} isn&apos;t configured yet.</Banner>
+      )}
+      {isProvisionalTaxYear(taxYear, region) && (
+        <Banner variant="info">Scottish {taxYear} rates aren&apos;t set yet — figures use the latest known Scottish rates provisionally. Verify when the Scottish Budget confirms them.</Banner>
       )}
 
       <p className="reveal text-sm text-muted" style={{ animationDelay: "60ms" }}>
