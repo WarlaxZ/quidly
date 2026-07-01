@@ -62,13 +62,22 @@ export function optimiseExtraction(input: ExtractionInput): ExtractionResult {
     return { recommended: zero, strategies: [{ key: "none", label: "No salary", outcome: zero }], curve: [{ salaryPence: 0, takeHomePence: zero.takeHomePence }] };
   }
 
+  const eaBudget = input.employmentAllowance ? nicRates(input.taxYear).employmentAllowancePence : 0;
+  // A salary is only affordable if the company can also fund its employer NIC out of profit.
+  const affordable = (s: number) => s + employerNIC(s, input.taxYear, eaBudget) <= profit;
+
+  // Largest affordable salary within [0, personal-allowance cap]. 0 is always affordable (profit > 0).
   const cap = Math.min(profit, SWEEP_CAP_PENCE);
-  const namedSalaries = [0, Math.min(5_000_00, profit), Math.min(12_570_00, profit)];
-  const curveSalaries = Array.from({ length: CURVE_POINTS + 1 }, (_, i) => Math.round((cap * i) / CURVE_POINTS));
+  let maxAffordable = 0;
+  for (let s = 0; s <= cap; s += SWEEP_STEP_PENCE) if (affordable(s)) maxAffordable = s;
+  if (affordable(cap) && cap > maxAffordable) maxAffordable = cap;
+
+  const namedSalaries = [0, Math.min(5_000_00, maxAffordable), Math.min(12_570_00, maxAffordable)];
+  const curveSalaries = Array.from({ length: CURVE_POINTS + 1 }, (_, i) => Math.round((maxAffordable * i) / CURVE_POINTS));
 
   const candidates = new Set<number>(curveSalaries);
-  for (let s = 0; s <= cap; s += SWEEP_STEP_PENCE) candidates.add(s);
-  candidates.add(cap);
+  for (let s = 0; s <= maxAffordable; s += SWEEP_STEP_PENCE) candidates.add(s);
+  candidates.add(maxAffordable);
   for (const s of namedSalaries) candidates.add(s);
   const sorted = [...candidates].sort((a, b) => a - b);
 

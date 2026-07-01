@@ -48,4 +48,18 @@ describe("optimiseExtraction", () => {
     const r = optimiseExtraction({ ...base, profitBeforeSalaryPence: 0 });
     expect(r.recommended).toMatchObject({ salaryPence: 0, dividendPence: 0, totalTaxPence: 0, takeHomePence: 0 });
   });
+
+  it("keeps the recommendation affordable and conserving for a small profit (£5k–£12.5k range)", () => {
+    const small = { ...base, profitBeforeSalaryPence: 8_000_00 };
+    const r = optimiseExtraction(small);
+    // recommended salary + its employer NIC must be funded by the profit
+    expect(r.recommended.salaryPence + r.recommended.employerNicPence).toBeLessThanOrEqual(8_000_00);
+    // conservation holds exactly for the (affordable) recommendation and every strategy/curve point
+    expect(r.recommended.takeHomePence + r.recommended.totalTaxPence).toBe(8_000_00);
+    for (const s of r.strategies) expect(s.outcome.takeHomePence + s.outcome.totalTaxPence).toBe(8_000_00);
+    for (const p of r.curve) {
+      const o = extractionOutcome(p.salaryPence, small);
+      expect(o.takeHomePence + o.totalTaxPence).toBe(8_000_00);
+    }
+  });
 });
