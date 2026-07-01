@@ -4,6 +4,7 @@ import { listProperties, getActiveProperty } from "../../lib/data/activeProperty
 import { PropertySwitcher } from "./PropertySwitcher";
 import { SideNav, type NavGroup } from "./SideNav";
 import { MobileNav } from "./MobileNav";
+import { ThemeToggle } from "./ThemeToggle";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const groups: NavGroup[] = [
@@ -55,6 +56,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         <SideNav groups={groups} />
 
         <div className="mt-auto flex flex-col gap-3 border-t border-line pt-4">
+          <ThemeToggle />
           {properties.length > 0 && (
             <div>
               <span className="mb-1.5 block px-1 text-[0.66rem] font-bold uppercase tracking-[0.12em] text-faint">Viewing</span>

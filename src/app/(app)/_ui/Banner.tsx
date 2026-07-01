@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 const VARIANTS = {
   error: "border-negative/30 bg-negative-soft text-negative",
-  success: "border-forest/25 bg-[#e8efe9] text-forest",
+  success: "border-forest/25 bg-positive-soft text-forest",
   info: "border-line bg-surface text-muted",
 } as const;
 

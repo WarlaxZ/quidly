@@ -31,6 +31,7 @@
   --color-positive: #1f6f4a;
   --color-negative: #a5432e;   /* oxblood — losses / tax due */
   --color-negative-soft: #f5ddd4;
+  --color-positive-soft: #e8efe9; /* success banner bg */
 
   /* Fonts (wired in layout.tsx via next/font) */
   --font-sans: var(--font-hanken), ui-sans-serif, system-ui, sans-serif;
@@ -45,6 +46,7 @@
 
 @layer base {
   html { color-scheme: light; }
+  html.dark { color-scheme: dark; }
 
   body {
     background-color: var(--color-paper);
@@ -129,4 +131,33 @@
   .reveal { opacity: 0; transform: translateY(10px); animation: reveal .55s cubic-bezier(.2,.7,.2,1) forwards; }
   @keyframes reveal { to { opacity: 1; transform: none; } }
   @media (prefers-reduced-motion: reduce) { .reveal { animation: none; opacity: 1; transform: none; } }
+}
+
+/* ============================================================
+   Quiet Ledger at night — dark theme. Warm charcoal base, sage-green
+   accent, brighter amber. Only token VALUES change; every page flips
+   via the semantic tokens. html.dark beats :root on specificity.
+   ============================================================ */
+html.dark {
+  --color-paper: #16140f;
+  --color-surface: #201d16;
+  --color-surface-sunk: #100e0a;
+
+  --color-ink: #ece6d8;
+  --color-muted: #a49d8c;
+  --color-faint: #726c5e;
+
+  --color-line: #322d22;
+  --color-line-strong: #45402f;
+
+  --color-forest: #4f9d78;
+  --color-forest-hi: #5cae87;
+  --color-forest-ink: #10130f;
+  --color-ochre: #d9a441;
+  --color-ochre-soft: #3a2e14;
+
+  --color-positive: #57b083;
+  --color-positive-soft: #16281d;
+  --color-negative: #e0795f;
+  --color-negative-soft: #3a201a;
 }

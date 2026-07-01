@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { SideNav, type NavGroup } from "./SideNav";
 import { PropertySwitcher } from "./PropertySwitcher";
+import { ThemeToggle } from "./ThemeToggle";
 
 export function MobileNav({ groups, properties, activeValue }: {
   groups: NavGroup[]; properties: { id: string; name: string }[]; activeValue: string;
@@ -30,6 +31,7 @@ export function MobileNav({ groups, properties, activeValue }: {
             <button onClick={() => setOpen(false)} className="mb-4 self-end text-sm text-muted" aria-label="Close menu">Close ✕</button>
             <div onClick={() => setOpen(false)}><SideNav groups={groups} /></div>
             <div className="mt-auto flex flex-col gap-3 border-t border-line pt-4">
+              <ThemeToggle />
               {properties.length > 0 && <PropertySwitcher properties={properties} activeValue={activeValue} />}
               <form method="post" action="/api/logout"><button type="submit" className="text-left text-sm font-medium text-muted hover:text-ink">Log out</button></form>
             </div>
