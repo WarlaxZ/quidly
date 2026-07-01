@@ -50,7 +50,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           <span className="grid h-8 w-8 place-items-center rounded-[9px] bg-forest text-forest-ink shadow-[0_4px_12px_-4px_rgba(31,61,48,.6)]">
             <span className="font-display text-lg leading-none">£</span>
           </span>
-          <span className="font-display text-[1.15rem] font-semibold leading-tight text-ink">Property<br />Accounts</span>
+          <span className="font-display text-[1.35rem] font-semibold leading-none text-ink">Quidly</span>
         </div>
 
         <SideNav groups={groups} />

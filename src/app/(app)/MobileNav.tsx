@@ -19,7 +19,7 @@ export function MobileNav({ groups, properties, activeValue }: {
       <div className="flex items-center justify-between border-b border-line bg-surface/80 px-4 py-3 backdrop-blur">
         <div className="flex items-center gap-2">
           <span className="grid h-8 w-8 place-items-center rounded-[9px] bg-forest text-forest-ink"><span className="font-display text-lg leading-none">£</span></span>
-          <span className="font-display text-base font-semibold text-ink">Property Accounts</span>
+          <span className="font-display text-base font-semibold text-ink">Quidly</span>
         </div>
         <button onClick={() => setOpen(true)} className="rounded-lg border border-line-strong px-3 py-1.5 text-sm font-medium text-ink" aria-label="Open menu">Menu</button>
       </div>
