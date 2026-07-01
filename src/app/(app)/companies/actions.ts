@@ -20,7 +20,7 @@ export async function addCompanyAction(formData: FormData) {
   }
   await createCompany({ name, accountingYearEndDay: day, accountingYearEndMonth: month });
   revalidatePath("/companies");
-  redirect("/companies");
+  redirect("/companies?ok=Company+added");
 }
 
 export async function updateCompanyAction(formData: FormData) {
@@ -32,7 +32,7 @@ export async function updateCompanyAction(formData: FormData) {
   }
   await updateCompany(id, { name: String(formData.get("name") ?? "").trim() || "Unnamed", accountingYearEndDay: day, accountingYearEndMonth: month });
   revalidatePath("/companies");
-  redirect("/companies");
+  redirect("/companies?ok=Company+updated");
 }
 
 export async function deleteCompanyAction(formData: FormData) {
@@ -44,7 +44,7 @@ export async function deleteCompanyAction(formData: FormData) {
     redirect(`/companies?error=${encodeURIComponent((e as Error).message)}`);
   }
   revalidatePath("/companies");
-  redirect("/companies");
+  redirect("/companies?ok=Company+deleted");
 }
 
 const LEDGER_KINDS = ["dividend", "director_loan_in", "director_loan_out"] as const;
@@ -63,7 +63,7 @@ export async function addLedgerEntryAction(formData: FormData) {
   const note = String(formData.get("note") ?? "").trim() || null;
   await createLedgerEntry({ companyId, date, kind: kind as (typeof LEDGER_KINDS)[number], amountPence, note });
   revalidatePath(base);
-  redirect(base);
+  redirect(`${base}?ok=Entry+added`);
 }
 
 export async function deleteLedgerEntryAction(formData: FormData) {
@@ -71,5 +71,5 @@ export async function deleteLedgerEntryAction(formData: FormData) {
   const companyId = String(formData.get("companyId"));
   await deleteLedgerEntry(String(formData.get("id")), companyId);
   revalidatePath(`/companies/${companyId}/ledger`);
-  redirect(`/companies/${companyId}/ledger`);
+  redirect(`/companies/${companyId}/ledger?ok=Entry+deleted`);
 }
