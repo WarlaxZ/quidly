@@ -26,5 +26,9 @@ export async function deleteCompanyIfEmpty(id: string): Promise<void> {
   if ((await getCompanyPropertyCount(id)) > 0) {
     throw new Error("Can't delete a company that still owns properties.");
   }
+  const ledgerCount = await prisma.companyLedgerEntry.count({ where: { companyId: id } });
+  if (ledgerCount > 0) {
+    throw new Error("Can't delete a company that still has dividend or director's-loan entries.");
+  }
   await prisma.company.delete({ where: { id } });
 }

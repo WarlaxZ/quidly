@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { companyAccountingPeriod } from "./companyPeriod";
+import { companyAccountingPeriod, companyPeriodYearOf } from "./companyPeriod";
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 
@@ -13,5 +13,12 @@ describe("companyAccountingPeriod", () => {
     const { start, end } = companyAccountingPeriod(31, 12, 2025);
     expect(iso(end)).toBe("2025-12-31");
     expect(iso(start)).toBe("2025-01-01");
+  });
+
+  it("maps a date to its accounting-period year", () => {
+    expect(companyPeriodYearOf(new Date("2025-06-01"), 31, 12)).toBe(2025);
+    expect(companyPeriodYearOf(new Date("2025-06-01"), 31, 3)).toBe(2026);
+    expect(companyPeriodYearOf(new Date("2025-03-31"), 31, 3)).toBe(2025);
+    expect(companyPeriodYearOf(new Date("2025-12-31T14:00:00Z"), 31, 12)).toBe(2025); // time-of-day on year-end day stays in-period
   });
 });
