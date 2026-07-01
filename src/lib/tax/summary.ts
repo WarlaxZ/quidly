@@ -1,5 +1,6 @@
 import { computeProfit, propertyAllowanceAdvice, financeCostReducer, PROPERTY_ALLOWANCE_PENCE } from "./profit";
 import { estimatePropertyTax } from "./incomeTax";
+import { propertySurchargeBps } from "./bands";
 import { sa105Boxes } from "./sa105";
 import type { Region, TaxTxn } from "./types";
 
@@ -33,9 +34,10 @@ export function buildTaxYearSummary(txns: TaxTxn[], profile: SummaryProfile): Ta
     : Math.max(0, profitPence);
   // The £1,000 property allowance is in lieu of ALL actual costs, including finance costs,
   // so the Section-24 finance reducer does not apply when the allowance is elected.
+  const reducerRateBps = 2000 + propertySurchargeBps(profile.taxYear, profile.region);
   const financeReducerPence = profile.usePropertyAllowance
     ? 0
-    : financeCostReducer(financeCostsPence, taxableProfitPence);
+    : financeCostReducer(financeCostsPence, taxableProfitPence, reducerRateBps);
   const { taxOnPropertyPence, marginalRate } = estimatePropertyTax({
     otherIncomePence: profile.otherIncomePence,
     taxableProfitPence,

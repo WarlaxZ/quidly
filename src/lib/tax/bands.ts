@@ -16,6 +16,11 @@ export interface TaxBands {
   topRateBps: number;
   /** Ordered bands below the top rate; the final band must have widthPence: null. */
   bands: TaxBand[];
+  /** Property income is taxed at each band's rate + this surcharge (bps). Default 0.
+   *  Also raises the Section-24 reducer to (basic rate + surcharge). E/W/NI 2027-28 = 200. */
+  propertyRateSurchargeBps?: number;
+  /** True when this year/region's rates are placeholders pending official confirmation. */
+  provisional?: boolean;
 }
 
 const ENGLAND_WALES_NI_2025_26: TaxBands = {
@@ -84,4 +89,14 @@ export function getBands(taxYear: string, region: Region): TaxBands {
     throw new Error(`Tax bands for ${taxYear}/${region}: the final band must have widthPence: null (fills to the top threshold)`);
   }
   return bands;
+}
+
+/** Property-income rate surcharge (bps) over ordinary rates for this year/region. 0 unless configured. */
+export function propertySurchargeBps(taxYear: string, region: Region): number {
+  return getBands(taxYear, region).propertyRateSurchargeBps ?? 0;
+}
+
+/** True when this year/region's rates are placeholders pending official confirmation. */
+export function isProvisionalTaxYear(taxYear: string, region: Region): boolean {
+  return getBands(taxYear, region).provisional ?? false;
 }

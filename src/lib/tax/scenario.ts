@@ -1,5 +1,6 @@
 import { estimatePropertyTax } from "./incomeTax";
 import { financeCostReducer, PROPERTY_ALLOWANCE_PENCE } from "./profit";
+import { propertySurchargeBps } from "./bands";
 import { corporationTax } from "./corporationTax";
 import { dividendTax } from "./dividendTax";
 import { formatGBP } from "./money";
@@ -35,9 +36,13 @@ export function runScenario(input: ScenarioInput): ScenarioResult {
   // so pocketPence is directly comparable across outcomes.
   const realCostsPence = expensesPence + financeCostsPence;
 
+  // Section-24 reducer rate: property basic rate = 20% + any property surcharge (22% for E/W/NI 2027-28+).
+  const reducerRateBps = 2000 + propertySurchargeBps(taxYear, region);
+  const reducerPct = reducerRateBps / 100;
+
   // --- Personal: actual costs ---
   const actualTaxable = Math.max(0, incomePence - expensesPence);
-  const actualReducer = financeCostReducer(financeCostsPence, actualTaxable);
+  const actualReducer = financeCostReducer(financeCostsPence, actualTaxable, reducerRateBps);
   const actualTax = estimatePropertyTax({
     otherIncomePence, taxableProfitPence: actualTaxable, financeReducerPence: actualReducer, taxYear, region,
   }).taxOnPropertyPence;
@@ -46,7 +51,7 @@ export function runScenario(input: ScenarioInput): ScenarioResult {
     label: "Personal — actual costs",
     taxPence: actualTax,
     pocketPence: incomePence - realCostsPence - actualTax,
-    note: "Income tax on your profit, with 20% Section-24 relief on the mortgage interest.",
+    note: `Income tax on your profit, with ${reducerPct}% Section-24 relief on the mortgage interest.`,
   };
 
   // --- Personal: £1,000 property allowance (no finance reducer) ---

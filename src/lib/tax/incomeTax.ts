@@ -46,9 +46,20 @@ export interface PropertyTaxResult {
 
 export function estimatePropertyTax(input: PropertyTaxInput): PropertyTaxResult {
   const { otherIncomePence, taxableProfitPence, financeReducerPence, taxYear, region } = input;
-  const taxWith = incomeTaxOn(otherIncomePence + taxableProfitPence, taxYear, region);
-  const taxWithout = incomeTaxOn(otherIncomePence, taxYear, region);
-  const gross = taxWith - taxWithout;
+  const bands = getBands(taxYear, region);
+  // Base: ordinary-rate marginal tax on the property slice (unchanged behaviour).
+  const base =
+    incomeTaxOn(otherIncomePence + taxableProfitPence, taxYear, region) -
+    incomeTaxOn(otherIncomePence, taxYear, region);
+  // Property surcharge (2027-28+ E/W/NI): uniform +Xbps across every property band including the top
+  // rate, so it is a flat surcharge on the taxable portion of the property income (the part above PA).
+  const surchargeBps = bands.propertyRateSurchargeBps ?? 0;
+  const pa = effectivePersonalAllowance(otherIncomePence + taxableProfitPence, bands);
+  const totalTaxable = Math.max(0, otherIncomePence + taxableProfitPence - pa);
+  const otherTaxable = Math.max(0, otherIncomePence - pa);
+  const taxableProperty = Math.max(0, totalTaxable - otherTaxable);
+  const surchargeTax = Math.round((taxableProperty * surchargeBps) / 10000);
+  const gross = base + surchargeTax;
   const taxOnPropertyPence = Math.max(0, gross - financeReducerPence);
   const marginalRate = taxableProfitPence > 0 ? gross / taxableProfitPence : 0;
   return { taxOnPropertyPence, marginalRate };

@@ -47,7 +47,7 @@ export function propertyAllowanceAdvice(
  * Capped at the lower of finance costs and property profit (v1 ignores the rarer
  * adjusted-total-income cap; revisit if the user's other income is very low).
  */
-export function financeCostReducer(financeCostsPence: number, profitPence: number): number {
+export function financeCostReducer(financeCostsPence: number, profitPence: number, reducerRateBps = 2000): number {
   const base = Math.max(0, Math.min(financeCostsPence, profitPence));
-  return Math.round(base * 2000 / 10000); // 2000 bps = 20% Section-24 basic-rate reducer
+  return Math.round(base * reducerRateBps / 10000); // Section-24 reducer at the property basic rate (default 20%)
 }
