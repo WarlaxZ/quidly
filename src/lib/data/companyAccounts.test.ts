@@ -35,6 +35,22 @@ describe("getCompanyAccounts", () => {
   it("returns null for an unknown company", async () => {
     expect(await getCompanyAccounts("nope", 2026)).toBeNull();
   });
+  it("reports the CT year used and whether it is configured", async () => {
+    const co = await createCompany({ name: "CT", accountingYearEndDay: 31, accountingYearEndMonth: 12 });
+    const prop = await createProperty({ name: "P", ownershipType: "company", companyId: co.id });
+    const rent = (await prisma.category.findFirstOrThrow({ where: { name: "Rent received" } })).id;
+    await createTransaction({ propertyId: prop.id, categoryId: rent, date: new Date("2025-06-01"), amountPence: 10_000_00, direction: "in" });
+    await createTransaction({ propertyId: prop.id, categoryId: rent, date: new Date("2026-06-01"), amountPence: 10_000_00, direction: "in" });
+
+    const in2025 = await getCompanyAccounts(co.id, 2025);
+    expect(in2025!.ctYear).toBe("2025-26");
+    expect(in2025!.ctYearConfigured).toBe(true);
+
+    const in2026 = await getCompanyAccounts(co.id, 2026);
+    expect(in2026!.ctYear).toBe("2026-27");
+    expect(in2026!.ctYearConfigured).toBe(false);
+    expect(in2026!.corporationTaxPence).toBe(1_900_00); // unchanged: £10,000 × 19% (falls back to 2025-26)
+  });
   it("excludes other companies' properties", async () => {
     const c1 = await createCompany({ name: "C1", accountingYearEndDay: 31, accountingYearEndMonth: 3 });
     const c2 = await createCompany({ name: "C2", accountingYearEndDay: 31, accountingYearEndMonth: 3 });

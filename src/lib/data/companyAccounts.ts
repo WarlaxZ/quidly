@@ -4,6 +4,7 @@ import { getCompany } from "./company";
 import { companyAccountingPeriod } from "../tax/companyPeriod";
 import { toTaxTxn } from "../tax/fromPrisma";
 import { companyTaxableProfit, corporationTax } from "../tax/corporationTax";
+import { getTaxYear, isConfiguredTaxYear } from "../tax/taxYear";
 
 export interface CompanyAccounts {
   company: { id: string; name: string };
@@ -15,6 +16,8 @@ export interface CompanyAccounts {
   profitAfterTaxPence: number;
   band: "small" | "marginal" | "main";
   effectiveRate: number;
+  ctYear: string;
+  ctYearConfigured: boolean;
 }
 
 export async function getCompanyAccounts(companyId: string, periodYear: number): Promise<CompanyAccounts | null> {
@@ -26,7 +29,9 @@ export async function getCompanyAccounts(companyId: string, periodYear: number):
     include: { category: true },
   });
   const { incomePence, expensesPence, profitPence } = companyTaxableProfit(rows.map((r) => toTaxTxn(r)));
-  const ct = corporationTax(profitPence);
+  // The CT financial year for this period (6-Apr vs 1-Apr boundary is immaterial for rate selection).
+  const ctYear = getTaxYear(period.end);
+  const ct = corporationTax(profitPence, ctYear);
   return {
     company: { id: company.id, name: company.name },
     period,
@@ -37,5 +42,7 @@ export async function getCompanyAccounts(companyId: string, periodYear: number):
     profitAfterTaxPence: profitPence - ct.taxPence,
     band: ct.band,
     effectiveRate: ct.effectiveRate,
+    ctYear,
+    ctYearConfigured: isConfiguredTaxYear(ctYear),
   };
 }
