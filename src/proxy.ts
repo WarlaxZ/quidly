@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { getIronSession } from "iron-session";
 import { sessionOptions, type SessionData } from "./lib/auth/session-config";
 
-const PUBLIC_PATHS = new Set(["/login", "/api/login"]);
+const PUBLIC_PATHS = new Set(["/", "/login", "/api/login", "/icon.svg"]);
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
