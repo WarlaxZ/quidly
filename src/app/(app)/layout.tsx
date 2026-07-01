@@ -22,6 +22,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       items: [
         { href: "/sa105", label: "SA105" },
         { href: "/planner", label: "What-if planner" },
+        { href: "/extraction", label: "Salary vs dividends" },
       ],
     },
     {
