@@ -13,5 +13,5 @@ export async function updateVendorAction(formData: FormData) {
     notes: String(formData.get("notes") ?? "") || null,
   });
   revalidatePath("/vendors");
-  redirect("/vendors");
+  redirect("/vendors?ok=Vendor+updated");
 }
