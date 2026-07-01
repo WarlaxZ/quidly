@@ -69,7 +69,7 @@ export default async function Sa105Page({ searchParams }: { searchParams: Promis
       </div>
 
       <p className="reveal text-xs text-faint" style={{ animationDelay: "180ms" }}>
-        Box numbers reflect the 2025/26 SA105 — verify against the current year&apos;s form notes before filing.
+        Box numbers reflect the {taxYear} SA105 — verify against the current year&apos;s form notes before filing.
       </p>
     </div>
   );

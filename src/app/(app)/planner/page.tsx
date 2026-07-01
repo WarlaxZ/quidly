@@ -134,9 +134,7 @@ export default async function PlannerPage({ searchParams }: { searchParams: Prom
       <p className="reveal text-xs text-faint" style={{ animationDelay: "240ms" }}>
         Estimate only — not tax advice. It compares tax alone and ignores incorporation costs, capital
         gains tax and stamp duty on transferring a property into a company, typically higher company
-        mortgage rates, and accountancy fees. Tax rates are the latest year configured in the app
-        (currently 2025/26); other tax years are estimated using those rates. Talk to an accountant
-        before deciding.
+        mortgage rates, and accountancy fees. Talk to an accountant before deciding.
       </p>
     </div>
   );
