@@ -21,17 +21,19 @@ export async function addRecurringAction(formData: FormData) {
     endDate: String(formData.get("endDate") ?? "") ? new Date(String(formData.get("endDate"))) : null,
   });
   revalidatePath("/recurring");
+  redirect(`/recurring?ok=${encodeURIComponent("Rule added")}`);
 }
 export async function deleteRecurringAction(formData: FormData) {
   await requireSession();
   const id = String(formData.get("id") ?? "");
   if (id) await deleteRecurringRule(id);
   revalidatePath("/recurring");
+  redirect(`/recurring?ok=${encodeURIComponent("Rule deleted")}`);
 }
 export async function generateNowAction(formData: FormData) {
   await requireSession();
   const propertyId = String(formData.get("propertyId") ?? "") || undefined;
   const count = await materialiseDue(new Date(), propertyId);
   revalidatePath("/transactions");
-  redirect(`/recurring?generated=${count}`);
+  redirect(`/recurring?ok=${encodeURIComponent(`Generated ${count} transaction(s)`)}`);
 }
