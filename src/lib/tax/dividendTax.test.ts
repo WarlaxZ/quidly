@@ -42,6 +42,22 @@ describe("dividendTax (2025-26)", () => {
   });
 
   it("falls back to the latest year's config for an unknown year", () => {
-    expect(dividendTax(10_000_00, 20_000_00, "2099-00")).toBe(831_25);
+    // latest configured year is now 2026-27 → ordinary rate 10.75%: (10,000 − 500) × 10.75% = 1,021.25
+    expect(dividendTax(10_000_00, 20_000_00, "2099-00")).toBe(1_021_25);
+  });
+});
+
+describe("dividendTax (2026-27)", () => {
+  it("taxes an ordinary-band dividend at the new 10.75% rate", () => {
+    // (10,000 − 500 allowance) × 10.75% = 1,021.25
+    expect(dividendTax(10_000_00, 20_000_00, "2026-27")).toBe(1_021_25);
+  });
+  it("taxes an upper-band dividend at the new 35.75% rate", () => {
+    // other 60,000 → all dividend in the upper band; (10,000 − 500) × 35.75% = 3,396.25
+    expect(dividendTax(10_000_00, 60_000_00, "2026-27")).toBe(3_396_25);
+  });
+  it("keeps the additional rate at 39.35% (unchanged)", () => {
+    // other 200,000 → PA 0; (10,000 − 500) × 39.35% = 3,738.25
+    expect(dividendTax(10_000_00, 200_000_00, "2026-27")).toBe(3_738_25);
   });
 });

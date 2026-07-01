@@ -22,8 +22,15 @@ const DLA_2025_26: DLARates = {
   beneficialLoanThresholdPence: 10_000_00,
 };
 
-const DLA_RATES: Record<string, DLARates> = { "2025-26": DLA_2025_26 };
-const LATEST_YEAR = "2025-26";
+const DLA_2026_27: DLARates = {
+  s455Bps: 3575,        // 35.75% (tracks the dividend upper rate; was 33.75%)
+  officialRateBps: 375, // 3.75% (2026-27 HMRC official rate of interest; was 2.25%)
+  class1aBps: 1500,     // 15% (unchanged)
+  beneficialLoanThresholdPence: 10_000_00,
+};
+
+const DLA_RATES: Record<string, DLARates> = { "2025-26": DLA_2025_26, "2026-27": DLA_2026_27 };
+const LATEST_YEAR = "2026-27";
 // Unknown years fall back to the latest known year (v1 behaviour); update DLA_RATES each April.
 function ratesFor(year: string): DLARates {
   return DLA_RATES[year] ?? DLA_RATES[LATEST_YEAR];

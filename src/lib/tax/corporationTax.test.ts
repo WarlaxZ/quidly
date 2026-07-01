@@ -49,3 +49,11 @@ describe("corporationTax (2025-26)", () => {
     expect(r.band).toBe("marginal");
   });
 });
+
+describe("corporationTax (2026-27, frozen — same as 2025-26)", () => {
+  it("keeps 19% small, 25% main, and 3/200 marginal relief", () => {
+    expect(corporationTax(40_000_00, "2026-27").taxPence).toBe(7_600_00);
+    expect(corporationTax(300_000_00, "2026-27").taxPence).toBe(75_000_00);
+    expect(corporationTax(100_000_00, "2026-27")).toEqual(corporationTax(100_000_00, "2025-26"));
+  });
+});

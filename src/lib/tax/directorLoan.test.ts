@@ -48,3 +48,14 @@ describe("beneficialLoanBenefit (2025-26)", () => {
     expect(r.applies).toBe(true);
   });
 });
+
+describe("directorLoan (2026-27)", () => {
+  it("charges s455 at the new 35.75% rate", () => {
+    expect(s455Charge(3_000_00, "2026-27")).toBe(1_072_50); // 3,000 × 35.75%
+  });
+  it("uses the 3.75% official rate for the beneficial-loan BIK", () => {
+    // avg(12,000, 20,000) = 16,000; × 3.75% = 600 BIK; Class 1A = 15% × 600 = 90
+    expect(beneficialLoanBenefit({ startBalancePence: 12_000_00, endBalancePence: 20_000_00, interestPaidPence: 0, year: "2026-27" }))
+      .toEqual({ applies: true, bikPence: 600_00, class1aNicPence: 90_00 });
+  });
+});

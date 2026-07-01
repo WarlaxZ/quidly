@@ -48,8 +48,8 @@ describe("getCompanyAccounts", () => {
 
     const in2026 = await getCompanyAccounts(co.id, 2026);
     expect(in2026!.ctYear).toBe("2026-27");
-    expect(in2026!.ctYearConfigured).toBe(false);
-    expect(in2026!.corporationTaxPence).toBe(1_900_00); // unchanged: £10,000 × 19% (falls back to 2025-26)
+    expect(in2026!.ctYearConfigured).toBe(true); // 2026-27 is now configured
+    expect(in2026!.corporationTaxPence).toBe(1_900_00); // £10,000 × 19% (CT frozen for 2026-27)
   });
   it("excludes other companies' properties", async () => {
     const c1 = await createCompany({ name: "C1", accountingYearEndDay: 31, accountingYearEndMonth: 3 });

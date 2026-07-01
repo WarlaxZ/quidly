@@ -21,8 +21,19 @@ const NIC_2025_26: NICRates = {
   employmentAllowancePence: 10_500_00,
 };
 
-const NIC_RATES: Record<string, NICRates> = { "2025-26": NIC_2025_26 };
-const LATEST_YEAR = "2025-26";
+const NIC_2026_27: NICRates = {
+  // Unchanged from 2025-26.
+  secondaryThresholdPence: 5_000_00,
+  secondaryBps: 1500,
+  primaryThresholdPence: 12_570_00,
+  uelPence: 50_270_00,
+  mainBps: 800,
+  upperBps: 200,
+  employmentAllowancePence: 10_500_00,
+};
+
+const NIC_RATES: Record<string, NICRates> = { "2025-26": NIC_2025_26, "2026-27": NIC_2026_27 };
+const LATEST_YEAR = "2026-27";
 
 export function nicRates(year: string): NICRates {
   return NIC_RATES[year] ?? NIC_RATES[LATEST_YEAR];

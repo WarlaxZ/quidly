@@ -20,8 +20,19 @@ const DIVIDEND_2025_26: DividendRates = {
   additionalBps: 3935,
 };
 
-const DIVIDEND_RATES: Record<string, DividendRates> = { "2025-26": DIVIDEND_2025_26 };
-const LATEST_YEAR = "2025-26";
+const DIVIDEND_2026_27: DividendRates = {
+  allowancePence: 500_00,
+  personalAllowancePence: 12_570_00,
+  paTaperStartPence: 100_000_00,
+  basicLimitPence: 37_700_00,
+  additionalStartPence: 125_140_00,
+  ordinaryBps: 1075, // 10.75% (was 8.75%)
+  upperBps: 3575,    // 35.75% (was 33.75%)
+  additionalBps: 3935, // 39.35% (unchanged)
+};
+
+const DIVIDEND_RATES: Record<string, DividendRates> = { "2025-26": DIVIDEND_2025_26, "2026-27": DIVIDEND_2026_27 };
+const LATEST_YEAR = "2026-27";
 
 function effectivePersonalAllowance(totalIncomePence: number, r: DividendRates): number {
   if (totalIncomePence <= r.paTaperStartPence) return r.personalAllowancePence;
