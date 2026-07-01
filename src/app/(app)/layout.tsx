@@ -3,6 +3,7 @@ import { isExtractionEnabled } from "../../lib/extraction/config";
 import { listProperties, getActiveProperty } from "../../lib/data/activeProperty";
 import { PropertySwitcher } from "./PropertySwitcher";
 import { SideNav, type NavGroup } from "./SideNav";
+import { MobileNav } from "./MobileNav";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const groups: NavGroup[] = [
@@ -39,8 +40,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const activeValue = active.isAll ? "all" : (active.propertyId ?? "");
 
   return (
-    <div className="flex min-h-screen">
-      <aside className="sticky top-0 flex h-screen w-64 shrink-0 flex-col border-r border-line bg-surface/70 px-4 py-5 backdrop-blur">
+    <div className="md:flex md:min-h-screen">
+      <MobileNav groups={groups} properties={properties} activeValue={activeValue} />
+      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-line bg-surface/70 px-4 py-5 backdrop-blur md:flex">
         {/* Wordmark */}
         <div className="mb-7 flex items-center gap-2.5 px-2">
           <span className="grid h-8 w-8 place-items-center rounded-[9px] bg-forest text-forest-ink shadow-[0_4px_12px_-4px_rgba(31,61,48,.6)]">
@@ -66,7 +68,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
-      <main className="min-w-0 flex-1 px-8 py-8">{children}</main>
+      <main className="min-w-0 flex-1 px-4 py-6 md:px-8 md:py-8">{children}</main>
     </div>
   );
 }
