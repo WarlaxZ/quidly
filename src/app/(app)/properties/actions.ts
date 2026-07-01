@@ -20,7 +20,7 @@ export async function addPropertyAction(formData: FormData) {
     companyId,
   });
   revalidatePath("/properties");
-  redirect("/properties");
+  redirect("/properties?ok=Property+added");
 }
 
 export async function updatePropertyAction(formData: FormData) {
@@ -38,7 +38,7 @@ export async function updatePropertyAction(formData: FormData) {
     companyId,
   });
   revalidatePath("/properties");
-  redirect("/properties");
+  redirect("/properties?ok=Property+updated");
 }
 
 export async function deletePropertyAction(formData: FormData) {
@@ -50,5 +50,5 @@ export async function deletePropertyAction(formData: FormData) {
     redirect(`/properties?error=${encodeURIComponent((e as Error).message)}`);
   }
   revalidatePath("/properties");
-  redirect("/properties");
+  redirect("/properties?ok=Property+deleted");
 }

@@ -1,26 +1,132 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ============================================================
+   Quiet Ledger — a warm, editorial design system for kept accounts.
+   Warm paper · forest-green ink of authority · ochre accent · tabular figures.
+   ============================================================ */
+
+@theme {
+  /* Surfaces */
+  --color-paper: #f7f4ec;      /* app background — warm off-white */
+  --color-surface: #fffdf7;    /* cards / raised */
+  --color-surface-sunk: #f2eee3;
+
+  /* Ink */
+  --color-ink: #1c1b16;        /* primary text — warm near-black */
+  --color-muted: #6c675c;      /* secondary text */
+  --color-faint: #9d978a;      /* tertiary / captions */
+
+  /* Lines */
+  --color-line: #e6dfd0;       /* hairline borders */
+  --color-line-strong: #d8cfba;
+
+  /* Brand */
+  --color-forest: #1f3d30;     /* primary — deep British green */
+  --color-forest-hi: #2b5745;
+  --color-forest-ink: #f4f1e6; /* text on forest */
+  --color-ochre: #b3771f;      /* accent — warm ochre/amber */
+  --color-ochre-soft: #f2e3c4;
+
+  /* Semantic money */
+  --color-positive: #1f6f4a;
+  --color-negative: #a5432e;   /* oxblood — losses / tax due */
+  --color-negative-soft: #f5ddd4;
+
+  /* Fonts (wired in layout.tsx via next/font) */
+  --font-sans: var(--font-hanken), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-fraunces), Georgia, serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+
+  /* Radii + shadow */
+  --radius-card: 14px;
+  --shadow-card: 0 1px 2px rgba(28, 27, 22, 0.04), 0 8px 24px -12px rgba(28, 27, 22, 0.14);
+  --shadow-raise: 0 2px 4px rgba(28, 27, 22, 0.06), 0 16px 40px -18px rgba(28, 27, 22, 0.22);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+@layer base {
+  html { color-scheme: light; }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  body {
+    background-color: var(--color-paper);
+    /* faint atmospheric wash so the paper isn't flat */
+    background-image:
+      radial-gradient(1200px 600px at 100% -10%, rgba(43, 87, 69, 0.05), transparent 60%),
+      radial-gradient(900px 500px at -10% 110%, rgba(179, 119, 31, 0.05), transparent 55%);
+    background-attachment: fixed;
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
+
+  h1, h2, h3 { font-family: var(--font-display); font-weight: 560; letter-spacing: -0.01em; }
+
+  ::selection { background: var(--color-ochre-soft); color: var(--color-ink); }
+
+  /* Keyboard focus — a calm forest ring */
+  :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+    outline: 2px solid var(--color-forest);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  /* Tabular, lining figures wherever numbers matter */
+  .tnum { font-variant-numeric: tabular-nums lining-nums; }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  /* Money — the hero of the whole app */
+  .money { font-family: var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+
+  .card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
+  }
+
+  .pill {
+    display: inline-flex; align-items: center; gap: 0.375rem;
+    padding: 0.2rem 0.6rem; border-radius: 999px;
+    font-size: 0.72rem; font-weight: 600; letter-spacing: 0.02em;
+    border: 1px solid var(--color-line-strong); color: var(--color-muted);
+    background: var(--color-surface-sunk);
+  }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
+    padding: 0.5rem 0.9rem; border-radius: 9px; font-weight: 600; font-size: 0.875rem;
+    border: 1px solid transparent; cursor: pointer;
+    transition: transform .12s ease, background-color .15s ease, box-shadow .15s ease, border-color .15s ease;
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn-primary { background: var(--color-forest); color: var(--color-forest-ink); box-shadow: 0 1px 0 rgba(0,0,0,.15) inset, 0 6px 16px -8px rgba(31,61,48,.7); }
+  .btn-primary:hover { background: var(--color-forest-hi); }
+  .btn-ghost { background: transparent; color: var(--color-forest); border-color: var(--color-line-strong); }
+  .btn-ghost:hover { background: var(--color-surface-sunk); border-color: var(--color-forest); }
+
+  /* Form controls */
+  .field {
+    width: 100%; background: var(--color-surface); color: var(--color-ink);
+    border: 1px solid var(--color-line-strong); border-radius: 9px;
+    padding: 0.5rem 0.7rem; font-size: 0.9rem;
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  .field:hover { border-color: var(--color-forest); }
+  .field:focus { border-color: var(--color-forest); box-shadow: 0 0 0 3px rgba(31,61,48,.12); outline: none; }
+  .label { display: block; font-size: 0.75rem; font-weight: 600; color: var(--color-muted); letter-spacing: 0.01em; margin-bottom: 0.3rem; }
+
+  /* Ledger tables */
+  .ledger { width: 100%; border-collapse: collapse; }
+  .ledger th { text-align: left; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-faint); padding: 0.6rem 0.85rem; border-bottom: 1px solid var(--color-line); }
+  .ledger td { padding: 0.7rem 0.85rem; border-bottom: 1px solid var(--color-line); font-size: 0.9rem; }
+  .ledger tbody tr { transition: background-color .12s ease; }
+  .ledger tbody tr:hover { background: var(--color-surface-sunk); }
+  .ledger tbody tr:last-child td { border-bottom: none; }
+
+  /* Staggered reveal on load */
+  .reveal { opacity: 0; transform: translateY(10px); animation: reveal .55s cubic-bezier(.2,.7,.2,1) forwards; }
+  @keyframes reveal { to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .reveal { animation: none; opacity: 1; transform: none; } }
 }

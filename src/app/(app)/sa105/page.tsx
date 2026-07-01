@@ -2,6 +2,9 @@ import { getPersonalTaxYearSummary } from "../../../lib/data/personalSummary";
 import { getTaxYear } from "../../../lib/tax/taxYear";
 import { formatGBP } from "../../../lib/tax/money";
 import { SA105_BOX_LABELS } from "../../../lib/tax/sa105Labels";
+import { PageHeader } from "../_ui/PageHeader";
+import { EmptyState } from "../_ui/EmptyState";
+import { YearNav } from "../_ui/YearNav";
 
 export default async function Sa105Page({ searchParams }: { searchParams: Promise<{ ty?: string }> }) {
   const { ty } = await searchParams;
@@ -10,33 +13,52 @@ export default async function Sa105Page({ searchParams }: { searchParams: Promis
   const boxes = Object.keys(summary.sa105).sort((a, b) => Number(a) - Number(b));
 
   return (
-    <div className="max-w-3xl space-y-6">
-      <h1 className="text-2xl font-semibold">SA105 summary — {taxYear}</h1>
-      <p className="text-sm text-gray-600">Aggregated across your personally-owned properties.</p>
-      <a href={`/export/sa105.pdf?ty=${taxYear}`} className="text-blue-600 hover:underline">Download PDF</a>
-      <p className="text-sm text-gray-600">
+    <div className="mx-auto max-w-3xl space-y-8">
+      <div className="reveal" style={{ animationDelay: "0ms" }}>
+        <PageHeader title="SA105 summary" subtitle="Aggregated across your personally-owned properties">
+          <YearNav basePath="/sa105" paramKey="ty" current={taxYear} label="Tax year" />
+          <a className="btn btn-ghost" href={`/export/sa105.pdf?ty=${taxYear}`}>Download PDF</a>
+        </PageHeader>
+      </div>
+
+      <p className="reveal text-sm text-muted" style={{ animationDelay: "60ms" }}>
         Figures to enter on the UK property pages (SA105) of your Self Assessment. Box 44 (finance costs) is a
         20% basic-rate tax reducer, not a deduction.
       </p>
-      <table className="w-full border">
-        <thead>
-          <tr className="border-b bg-gray-50 text-left">
-            <th className="px-3 py-2 w-16">Box</th><th className="px-3 py-2">Description</th>
-            <th className="px-3 py-2 text-right">Amount</th>
-          </tr>
-        </thead>
-        <tbody>
-          {boxes.map((box) => (
-            <tr key={box} className="border-b">
-              <td className="px-3 py-2 font-mono">{box}</td>
-              <td className="px-3 py-2">{SA105_BOX_LABELS[box] ?? "—"}</td>
-              <td className="px-3 py-2 text-right">{formatGBP(summary.sa105[box])}</td>
-            </tr>
-          ))}
-          {boxes.length === 0 && <tr><td colSpan={3} className="px-3 py-2 text-gray-500">No data for this tax year.</td></tr>}
-        </tbody>
-      </table>
-      <p className="text-xs text-gray-400">Box numbers reflect the 2025/26 SA105 — verify against the current year's form notes before filing.</p>
+
+      <div className="reveal" style={{ animationDelay: "120ms" }}>
+        {boxes.length === 0 ? (
+          <EmptyState
+            title="No data for this tax year"
+            hint="Record some transactions for this year to populate the SA105."
+          />
+        ) : (
+          <div className="card overflow-hidden">
+            <table className="ledger">
+              <thead>
+                <tr>
+                  <th className="w-16">Box</th>
+                  <th>Description</th>
+                  <th className="text-right">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {boxes.map((box) => (
+                  <tr key={box}>
+                    <td className="money">{box}</td>
+                    <td>{SA105_BOX_LABELS[box] ?? "—"}</td>
+                    <td className="money text-right">{formatGBP(summary.sa105[box])}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <p className="reveal text-xs text-faint" style={{ animationDelay: "180ms" }}>
+        Box numbers reflect the 2025/26 SA105 — verify against the current year&apos;s form notes before filing.
+      </p>
     </div>
   );
 }

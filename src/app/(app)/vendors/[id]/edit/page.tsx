@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getVendor } from "../../../../../lib/data/vendors";
 import { updateVendorAction } from "../../edit-actions";
+import { PageHeader } from "../../../_ui/PageHeader";
 
 export default async function EditVendorPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -8,18 +9,32 @@ export default async function EditVendorPage({ params }: { params: Promise<{ id:
   if (!vendor) notFound();
 
   return (
-    <div className="max-w-xl space-y-4">
-      <h1 className="text-2xl font-semibold">Edit vendor</h1>
-      <form action={updateVendorAction} className="space-y-3">
-        <input type="hidden" name="id" value={vendor.id} />
-        <label className="block"><span className="block text-sm">Name</span>
-          <input name="name" defaultValue={vendor.name} required className="w-full border px-2 py-1" /></label>
-        <label className="block"><span className="block text-sm">Contact</span>
-          <input name="contactDetails" defaultValue={vendor.contactDetails ?? ""} className="w-full border px-2 py-1" /></label>
-        <label className="block"><span className="block text-sm">Notes</span>
-          <input name="notes" defaultValue={vendor.notes ?? ""} className="w-full border px-2 py-1" /></label>
-        <button type="submit" className="bg-blue-600 px-3 py-1 text-white">Save</button>
-      </form>
+    <div className="mx-auto max-w-3xl space-y-8">
+      <div className="reveal" style={{ animationDelay: "0ms" }}>
+        <PageHeader title="Edit vendor" />
+      </div>
+
+      <section className="reveal" style={{ animationDelay: "60ms" }}>
+        <form action={updateVendorAction} className="card p-6 space-y-5">
+          <input type="hidden" name="id" value={vendor.id} />
+          <label className="block">
+            <span className="label">Name</span>
+            <input name="name" defaultValue={vendor.name} required className="field" />
+          </label>
+          <label className="block">
+            <span className="label">Contact</span>
+            <input name="contactDetails" defaultValue={vendor.contactDetails ?? ""} className="field" />
+          </label>
+          <label className="block">
+            <span className="label">Notes</span>
+            <input name="notes" defaultValue={vendor.notes ?? ""} className="field" />
+          </label>
+          <div className="flex items-center gap-3">
+            <button type="submit" className="btn btn-primary">Save</button>
+            <a href="/vendors" className="btn btn-ghost">Cancel</a>
+          </div>
+        </form>
+      </section>
     </div>
   );
 }

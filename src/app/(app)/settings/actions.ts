@@ -1,4 +1,5 @@
 "use server";
+import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { updateProperty } from "../../../lib/data/property";
 import { requireSession } from "../../../lib/auth/session";
@@ -12,4 +13,5 @@ export async function savePropertyAction(formData: FormData) {
   });
   revalidatePath("/settings");
   revalidatePath("/transactions");
+  redirect("/settings?ok=Saved");
 }

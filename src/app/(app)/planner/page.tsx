@@ -4,6 +4,9 @@ import { runScenario, type ScenarioInput } from "../../../lib/tax/scenario";
 import { getTaxYear } from "../../../lib/tax/taxYear";
 import { formatGBP, penceToPounds, poundsToPence } from "../../../lib/tax/money";
 import type { Region } from "../../../lib/tax/types";
+import { PageHeader } from "../_ui/PageHeader";
+import { YearNav } from "../_ui/YearNav";
+import { MoneyInput } from "../_ui/MoneyInput";
 
 type Search = {
   ty?: string; basis?: string;
@@ -47,84 +50,85 @@ export default async function PlannerPage({ searchParams }: { searchParams: Prom
   const yearOptions = [startYear - 2, startYear - 1, startYear, startYear + 1].map((y) => `${y}-${String((y + 1) % 100).padStart(2, "0")}`);
 
   return (
-    <div className="max-w-5xl space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">What-if planner</h1>
-        <span className="text-gray-500">Tax year {taxYear}</span>
+    <div className="mx-auto max-w-5xl space-y-8">
+      <div className="reveal" style={{ animationDelay: "0ms" }}>
+        <PageHeader title="What-if planner" subtitle="Compare how you hold your property">
+          <YearNav basePath="/planner" paramKey="ty" current={taxYear} label="Tax year" extraQuery={{ basis }} />
+        </PageHeader>
       </div>
-      <p className="text-sm text-gray-600">
-        Compare the tax and the cash you keep under each way of holding your property. Figures are
-        pre-filled from your records — change any of them to test a different scenario.
-      </p>
 
       {personalProperties.length === 0 && (
-        <p className="rounded bg-amber-50 px-3 py-2 text-sm text-amber-800">
-          No properties yet — add one and record some transactions to pre-fill these figures from your
-          records, or just type numbers below to explore scenarios.
-        </p>
+        <div className="reveal" style={{ animationDelay: "30ms" }}>
+          <p className="rounded-lg border border-ochre/40 bg-ochre-soft/50 px-4 py-3 text-sm text-ink">
+            No properties yet — add one and record some transactions to pre-fill these figures from your
+            records, or just type numbers below to explore scenarios.
+          </p>
+        </div>
       )}
 
-      <form method="get" className="grid grid-cols-2 gap-3 rounded border p-4 md:grid-cols-3">
-        <label className="block">
-          <span className="block text-sm">Tax year</span>
-          <select name="ty" defaultValue={taxYear} className="w-full border px-2 py-1">
-            {yearOptions.map((y) => <option key={y} value={y}>{y}</option>)}
-          </select>
-        </label>
-        <label className="block">
-          <span className="block text-sm">Based on</span>
-          <select name="basis" defaultValue={basis} className="w-full border px-2 py-1">
-            <option value="all">All personal properties</option>
-            {personalProperties.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
-        </label>
-        <label className="block">
-          <span className="block text-sm">Tax region</span>
-          <select name="region" defaultValue={region} className="w-full border px-2 py-1">
-            <option value="englandWalesNI">England / Wales / NI</option>
-            <option value="scotland">Scotland</option>
-          </select>
-        </label>
-        <label className="block">
-          <span className="block text-sm">Rental income (£/yr)</span>
-          <input name="income" defaultValue={penceToPounds(input.incomePence)} className="w-full border px-2 py-1" />
-        </label>
-        <label className="block">
-          <span className="block text-sm">Expenses (£/yr)</span>
-          <input name="expenses" defaultValue={penceToPounds(input.expensesPence)} className="w-full border px-2 py-1" />
-        </label>
-        <label className="block">
-          <span className="block text-sm">Mortgage interest (£/yr)</span>
-          <input name="finance" defaultValue={penceToPounds(input.financeCostsPence)} className="w-full border px-2 py-1" />
-        </label>
-        <label className="block">
-          <span className="block text-sm">Your other income (£/yr)</span>
-          <input name="other" defaultValue={penceToPounds(input.otherIncomePence)} className="w-full border px-2 py-1" />
-        </label>
-        <div className="col-span-2 flex items-end gap-3 md:col-span-3">
-          <button type="submit" className="bg-blue-600 px-3 py-1 text-white">Compare</button>
-          <a href={`/planner?ty=${taxYear}&basis=${basis}`} className="text-sm text-blue-600 hover:underline">Reset to my real figures</a>
+      <form method="get" className="reveal card p-5" style={{ animationDelay: "60ms" }}>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+          <label className="block">
+            <span className="label">Tax year</span>
+            <select name="ty" defaultValue={taxYear} className="field">
+              {yearOptions.map((y) => <option key={y} value={y}>{y}</option>)}
+            </select>
+          </label>
+          <label className="block">
+            <span className="label">Based on</span>
+            <select name="basis" defaultValue={basis} className="field">
+              <option value="all">All personal properties</option>
+              {personalProperties.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </label>
+          <label className="block">
+            <span className="label">Tax region</span>
+            <select name="region" defaultValue={region} className="field">
+              <option value="englandWalesNI">England / Wales / NI</option>
+              <option value="scotland">Scotland</option>
+            </select>
+          </label>
+          <label className="block">
+            <span className="label">Rental income (£/yr)</span>
+            <MoneyInput name="income" defaultValue={penceToPounds(input.incomePence)} />
+          </label>
+          <label className="block">
+            <span className="label">Expenses (£/yr)</span>
+            <MoneyInput name="expenses" defaultValue={penceToPounds(input.expensesPence)} />
+          </label>
+          <label className="block">
+            <span className="label">Mortgage interest (£/yr)</span>
+            <MoneyInput name="finance" defaultValue={penceToPounds(input.financeCostsPence)} />
+          </label>
+          <label className="block">
+            <span className="label">Your other income (£/yr)</span>
+            <MoneyInput name="other" defaultValue={penceToPounds(input.otherIncomePence)} />
+          </label>
+          <div className="col-span-2 flex items-end gap-3 md:col-span-3">
+            <button type="submit" className="btn btn-primary">Compare</button>
+            <a href={`/planner?ty=${taxYear}&basis=${basis}`} className="btn btn-ghost">Reset to my real figures</a>
+          </div>
         </div>
       </form>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+      <div className="reveal grid gap-4 md:grid-cols-4" style={{ animationDelay: "120ms" }}>
         {outcomes.map((o) => (
-          <div key={o.key} className={`rounded border p-4 ${o.key === best.key ? "border-green-600 ring-1 ring-green-600" : ""}`}>
-            <div className="text-sm font-medium">{o.label}</div>
-            <div className="mt-2 text-xs text-gray-500">Tax</div>
-            <div className="text-lg font-semibold">{formatGBP(o.taxPence)}</div>
-            <div className="mt-2 text-xs text-gray-500">In your pocket</div>
-            <div className={`text-2xl font-semibold ${o.key === best.key ? "text-green-700" : ""}`}>{formatGBP(o.pocketPence)}</div>
-            <p className="mt-2 text-xs text-gray-500">{o.note}</p>
+          <div key={o.key} className={`card p-4 ${o.key === best.key ? "ring-1 ring-forest border-forest" : ""}`}>
+            <div className="text-sm font-medium text-ink">{o.label}</div>
+            <div className="mt-2 text-xs text-muted">Tax</div>
+            <div className="money text-lg font-semibold text-ink">{formatGBP(o.taxPence)}</div>
+            <div className="mt-2 text-xs text-muted">In your pocket</div>
+            <div className={`money text-2xl font-semibold ${o.key === best.key ? "text-forest" : "text-ink"}`}>{formatGBP(o.pocketPence)}</div>
+            <p className="mt-2 text-xs text-muted">{o.note}</p>
           </div>
         ))}
       </div>
 
-      <p className="text-sm text-gray-700">
+      <p className="reveal text-sm text-ink" style={{ animationDelay: "180ms" }}>
         On these figures, <strong>{best.label}</strong> keeps the most in your pocket: {formatGBP(best.pocketPence)}.
       </p>
 
-      <p className="text-xs text-gray-400">
+      <p className="reveal text-xs text-faint" style={{ animationDelay: "240ms" }}>
         Estimate only — not tax advice. It compares tax alone and ignores incorporation costs, capital
         gains tax and stamp duty on transferring a property into a company, typically higher company
         mortgage rates, and accountancy fees. Tax rates are the latest year configured in the app

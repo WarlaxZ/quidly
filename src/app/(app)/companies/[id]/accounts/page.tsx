@@ -3,6 +3,10 @@ import { getCompanyAccounts } from "../../../../../lib/data/companyAccounts";
 import { getCompanyReserves, getCompanyDividendTax } from "../../../../../lib/data/companyReserves";
 import { getDirectorLoanSummary } from "../../../../../lib/data/directorLoan";
 import { formatGBP, poundsToPence } from "../../../../../lib/tax/money";
+import { PageHeader } from "../../../_ui/PageHeader";
+import { Banner } from "../../../_ui/Banner";
+import { YearNav } from "../../../_ui/YearNav";
+import { MoneyInput } from "../../../_ui/MoneyInput";
 
 export default async function CompanyAccountsPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ year?: string; interestPaid?: string }> }) {
   const { id } = await params;
@@ -23,103 +27,137 @@ export default async function CompanyAccountsPage({ params, searchParams }: { pa
   ]);
 
   const iso = (d: Date) => d.toISOString().slice(0, 10);
-  const Row = ({ label, pence, bold }: { label: string; pence: number; bold?: boolean }) => (
-    <tr className={`border-b ${bold ? "font-semibold" : ""}`}>
-      <td className="px-3 py-2">{label}</td>
-      <td className="px-3 py-2 text-right">{formatGBP(pence)}</td>
+
+  const LedgerRow = ({ label, pence, bold }: { label: string; pence: number; bold?: boolean }) => (
+    <tr>
+      <td className={bold ? "font-semibold text-ink" : ""}>{label}</td>
+      <td className={`money text-right${bold ? " font-semibold text-ink" : ""}`}>{formatGBP(pence)}</td>
     </tr>
   );
 
   return (
-    <div className="max-w-2xl space-y-6">
-      <h1 className="text-2xl font-semibold">{accounts.company.name} — accounts</h1>
-      <p className="text-sm text-gray-600">
-        Accounting period {iso(accounts.period.start)} to {iso(accounts.period.end)}.{" "}
-        <span className="inline-flex gap-2">
-          <a href={`/companies/${id}/accounts?year=${periodYear - 1}`} className="text-blue-600 hover:underline">← {periodYear - 1}</a>
-          <a href={`/companies/${id}/accounts?year=${periodYear + 1}`} className="text-blue-600 hover:underline">{periodYear + 1} →</a>
-        </span>
-        {" · "}
-        <a href={`/companies/${id}/ledger`} className="text-blue-600 hover:underline">Manage dividends &amp; director&apos;s loan →</a>
-      </p>
+    <div className="mx-auto max-w-2xl space-y-8">
+      <div className="reveal" style={{ animationDelay: "0ms" }}>
+        <PageHeader
+          title={`${accounts.company.name} — accounts`}
+          subtitle={`Accounting period ${iso(accounts.period.start)} to ${iso(accounts.period.end)}`}
+        >
+          <YearNav
+            basePath={`/companies/${id}/accounts`}
+            paramKey="year"
+            current={periodYear}
+            label="Period"
+          />
+          <a href={`/companies/${id}/ledger`} className="btn btn-ghost">
+            Manage dividends &amp; director&apos;s loan →
+          </a>
+        </PageHeader>
+      </div>
 
-      <table className="w-full border">
-        <tbody>
-          <Row label="Rental income" pence={accounts.incomePence} />
-          <Row label="Allowable expenses (incl. mortgage interest)" pence={accounts.expensesPence} />
-          <Row label="Profit before tax" pence={accounts.profitBeforeTaxPence} bold />
-          <Row label={`Corporation tax (${(accounts.effectiveRate * 100).toFixed(1)}%, ${accounts.band} rate)`} pence={accounts.corporationTaxPence} />
-          <Row label="Profit after tax" pence={accounts.profitAfterTaxPence} bold />
-        </tbody>
-      </table>
-
-      {reserves && (
-        <section className="space-y-2">
-          <h2 className="text-lg font-semibold">Reserves</h2>
-          <table className="w-full border">
+      {/* P&L */}
+      <section className="reveal space-y-3" style={{ animationDelay: "60ms" }}>
+        <h2 className="text-lg text-ink">Profit &amp; loss</h2>
+        <div className="card overflow-hidden">
+          <table className="ledger">
             <tbody>
-              <Row label="Profit after tax (this period)" pence={reserves.periodProfitAfterTaxPence} />
-              <Row label="Dividends paid (this period)" pence={reserves.periodDividendsPence} />
-              <Row label="Retained earnings carried forward" pence={reserves.retainedEarningsPence} bold />
+              <LedgerRow label="Rental income" pence={accounts.incomePence} />
+              <LedgerRow label="Allowable expenses (incl. mortgage interest)" pence={accounts.expensesPence} />
+              <LedgerRow label="Profit before tax" pence={accounts.profitBeforeTaxPence} bold />
+              <LedgerRow label={`Corporation tax (${(accounts.effectiveRate * 100).toFixed(1)}%, ${accounts.band} rate)`} pence={accounts.corporationTaxPence} />
+              <LedgerRow label="Profit after tax" pence={accounts.profitAfterTaxPence} bold />
             </tbody>
           </table>
+        </div>
+      </section>
+
+      {/* Reserves */}
+      {reserves && (
+        <section className="reveal space-y-3" style={{ animationDelay: "120ms" }}>
+          <h2 className="text-lg text-ink">Reserves</h2>
+          <div className="card overflow-hidden">
+            <table className="ledger">
+              <tbody>
+                <LedgerRow label="Profit after tax (this period)" pence={reserves.periodProfitAfterTaxPence} />
+                <LedgerRow label="Dividends paid (this period)" pence={reserves.periodDividendsPence} />
+                <LedgerRow label="Retained earnings carried forward" pence={reserves.retainedEarningsPence} bold />
+              </tbody>
+            </table>
+          </div>
           {reserves.unlawful && (
-            <p className="rounded bg-red-100 px-3 py-2 text-sm text-red-700">
+            <Banner variant="error">
               Dividends paid exceed the company&apos;s distributable profits — this may be an unlawful distribution.
               Dividends can only be paid out of retained, after-tax profits.
-            </p>
+            </Banner>
           )}
         </section>
       )}
 
+      {/* Dividend tax */}
       {dividendTax.length > 0 && (
-        <section className="space-y-2">
-          <h2 className="text-lg font-semibold">Dividend tax (personal, by tax year)</h2>
-          <table className="w-full border">
-            <thead><tr className="border-b bg-gray-50 text-left"><th className="px-3 py-2">Tax year</th><th className="px-3 py-2 text-right">Dividends</th><th className="px-3 py-2 text-right">Estimated dividend tax</th></tr></thead>
-            <tbody>
-              {dividendTax.map((d) => (
-                <tr key={d.taxYear} className="border-b">
-                  <td className="px-3 py-2">{d.taxYear}</td>
-                  <td className="px-3 py-2 text-right">{formatGBP(d.dividendPence)}</td>
-                  <td className="px-3 py-2 text-right">{formatGBP(d.taxPence)}</td>
+        <section className="reveal space-y-3" style={{ animationDelay: "180ms" }}>
+          <h2 className="text-lg text-ink">Dividend tax (personal, by tax year)</h2>
+          <div className="card overflow-hidden">
+            <table className="ledger">
+              <thead>
+                <tr>
+                  <th>Tax year</th>
+                  <th className="text-right">Dividends</th>
+                  <th className="text-right">Estimated dividend tax</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          <p className="text-xs text-gray-400">Dividend tax is a personal Self-Assessment matter (your other income affects the rate), separate from the company&apos;s accounting period.</p>
+              </thead>
+              <tbody>
+                {dividendTax.map((d) => (
+                  <tr key={d.taxYear}>
+                    <td>{d.taxYear}</td>
+                    <td className="money text-right">{formatGBP(d.dividendPence)}</td>
+                    <td className="money text-right">{formatGBP(d.taxPence)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-xs text-faint">
+            Dividend tax is a personal Self-Assessment matter (your other income affects the rate), separate from the company&apos;s accounting period.
+          </p>
         </section>
       )}
 
+      {/* Director's loan */}
       {loan && (loan.balancePence !== 0 || loan.bik.applies) && (
-        <section className="space-y-2">
-          <h2 className="text-lg font-semibold">Director&apos;s loan account</h2>
-          <table className="w-full border">
-            <tbody>
-              <Row label={loan.balancePence >= 0 ? "Balance owed to the company (overdrawn)" : "Balance owed to the director (in credit)"} pence={Math.abs(loan.balancePence)} bold />
-              {loan.balancePence > 0 && <Row label="Potential s455 charge (33.75%)" pence={loan.s455Pence} />}
-              {loan.bik.applies && <Row label={`Beneficial-loan benefit-in-kind (${loan.taxYear})`} pence={loan.bik.bikPence} />}
-              {loan.bik.applies && <Row label="Employer Class 1A NIC on the benefit" pence={loan.bik.class1aNicPence} />}
-            </tbody>
-          </table>
+        <section className="reveal space-y-3" style={{ animationDelay: "240ms" }}>
+          <h2 className="text-lg text-ink">Director&apos;s loan account</h2>
+          <div className="card overflow-hidden">
+            <table className="ledger">
+              <tbody>
+                <LedgerRow
+                  label={loan.balancePence >= 0 ? "Balance owed to the company (overdrawn)" : "Balance owed to the director (in credit)"}
+                  pence={Math.abs(loan.balancePence)}
+                  bold
+                />
+                {loan.balancePence > 0 && <LedgerRow label="Potential s455 charge (33.75%)" pence={loan.s455Pence} />}
+                {loan.bik.applies && <LedgerRow label={`Beneficial-loan benefit-in-kind (${loan.taxYear})`} pence={loan.bik.bikPence} />}
+                {loan.bik.applies && <LedgerRow label="Employer Class 1A NIC on the benefit" pence={loan.bik.class1aNicPence} />}
+              </tbody>
+            </table>
+          </div>
           {loan.balancePence > 0 && (
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-faint">
               The s455 charge applies only if the loan isn&apos;t repaid within 9 months and 1 day of the period end, and is refundable once repaid.
               The benefit-in-kind uses the averaging method and the official rate of interest.
             </p>
           )}
-          <form method="get" className="flex items-end gap-2 text-sm">
+          <form method="get" className="card p-4 flex flex-wrap items-end gap-3">
             <input type="hidden" name="year" value={periodYear} />
-            <label>
-              <span className="block">Interest the director paid this year (£)</span>
-              <input name="interestPaid" defaultValue={interestPaid ?? ""} className="border px-2 py-1" />
+            <label className="flex-1 min-w-[14rem]">
+              <span className="label">Interest the director paid this year (£)</span>
+              <MoneyInput name="interestPaid" defaultValue={interestPaid ?? ""} placeholder="0.00" />
             </label>
-            <button type="submit" className="bg-blue-600 px-3 py-1 text-white">Recalculate</button>
+            <button type="submit" className="btn btn-primary">Recalculate</button>
           </form>
         </section>
       )}
 
-      <p className="text-xs text-gray-400">
+      <p className="reveal text-xs text-faint" style={{ animationDelay: "300ms" }}>
         Estimate only — not filed accounts, a CT600, or a P11D. Corporation tax assumes a standalone company and a full 12-month period.
         s455, the official rate of interest, and Class 1A NIC rates change and have timing rules — verify the figures with your accountant.
       </p>

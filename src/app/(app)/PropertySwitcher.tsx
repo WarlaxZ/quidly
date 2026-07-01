@@ -8,7 +8,7 @@ export function PropertySwitcher({ properties, activeValue }: { properties: { id
         name="propertyId"
         defaultValue={activeValue}
         onChange={(e) => e.currentTarget.form?.requestSubmit()}
-        className="border px-2 py-1 text-sm"
+        className="field !py-1.5 text-sm"
       >
         <option value="all">All properties</option>
         {properties.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
