@@ -35,7 +35,7 @@ Quidly is free and self-hosted, with a UK-first design. **Money is stored as int
 ## Self-host with Docker (recommended)
 
 ```bash
-git clone <your-fork> && cd quidly
+git clone https://github.com/WarlaxZ/quidly.git && cd quidly
 cp .env.example .env                                    # then set SESSION_SECRET
 docker compose run --rm quidly npm run set-password     # paste the Docker-Compose hash into .env
 docker compose up -d                                    # open http://localhost:3000

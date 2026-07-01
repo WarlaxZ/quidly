@@ -90,8 +90,7 @@ docker compose run --rm quidly npm run set-password   # paste the Docker-Compose
 docker compose up -d
 # open http://localhost:3000`}</code></pre>
           <p className="mt-3 text-xs text-faint">Serve it behind an HTTPS reverse proxy (Caddy/Traefik/nginx). Full instructions in the README.</p>
-          {/* TODO: set your public repo URL when you publish */}
-          <a href="#" className="btn btn-ghost mt-4">View the code</a>
+          <a href="https://github.com/WarlaxZ/quidly" className="btn btn-ghost mt-4">View the code</a>
         </div>
       </section>
 
