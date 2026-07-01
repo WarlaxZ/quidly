@@ -10,7 +10,8 @@ export const sessionOptions: SessionOptions = {
   cookieName: "ppa_session",
   cookieOptions: {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    // Secure cookie in production by default; a self-hoster on plain-HTTP LAN can set COOKIE_SECURE=false.
+    secure: process.env.COOKIE_SECURE ? process.env.COOKIE_SECURE === "true" : process.env.NODE_ENV === "production",
     sameSite: "lax",
     maxAge: 60 * 60 * 24 * 7, // 7 days
   },
