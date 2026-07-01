@@ -1,40 +1,72 @@
-import Link from "next/link";
 import type { ReactNode } from "react";
 import { isExtractionEnabled } from "../../lib/extraction/config";
 import { listProperties, getActiveProperty } from "../../lib/data/activeProperty";
 import { PropertySwitcher } from "./PropertySwitcher";
+import { SideNav, type NavGroup } from "./SideNav";
+
 export default async function AppLayout({ children }: { children: ReactNode }) {
-  const nav = [
-    { href: "/dashboard", label: "Dashboard" },
-    { href: "/transactions", label: "Transactions" },
-    { href: "/import", label: "Import" },
-    ...(isExtractionEnabled() ? [{ href: "/scan", label: "Scan" }] : []),
-    { href: "/recurring", label: "Recurring" },
-    { href: "/sa105", label: "SA105" },
-    { href: "/vendors", label: "Vendors" },
-    { href: "/settings", label: "Settings" },
-    { href: "/properties", label: "Properties" },
-    { href: "/companies", label: "Companies" },
-    { href: "/planner", label: "Planner" },
+  const groups: NavGroup[] = [
+    { items: [{ href: "/dashboard", label: "Dashboard" }] },
+    {
+      heading: "Bookkeeping",
+      items: [
+        { href: "/transactions", label: "Transactions" },
+        { href: "/recurring", label: "Recurring" },
+        { href: "/import", label: "Import" },
+        ...(isExtractionEnabled() ? [{ href: "/scan", label: "Scan a receipt" }] : []),
+      ],
+    },
+    {
+      heading: "Tax",
+      items: [
+        { href: "/sa105", label: "SA105" },
+        { href: "/planner", label: "What-if planner" },
+      ],
+    },
+    {
+      heading: "Manage",
+      items: [
+        { href: "/properties", label: "Properties" },
+        { href: "/companies", label: "Companies" },
+        { href: "/vendors", label: "Vendors" },
+        { href: "/settings", label: "Settings" },
+      ],
+    },
   ];
+
   const properties = await listProperties();
   const active = await getActiveProperty();
   const activeValue = active.isAll ? "all" : (active.propertyId ?? "");
+
   return (
-    <div className="min-h-screen">
-      <nav className="flex gap-4 border-b px-6 py-4">
-        <span className="font-semibold">Property Accounts</span>
-        {nav.map((n) => (
-          <Link key={n.href} href={n.href} className="text-blue-600 hover:underline">{n.label}</Link>
-        ))}
-        <div className="ml-auto flex items-center gap-3">
-          {properties.length > 0 && <PropertySwitcher properties={properties} activeValue={activeValue} />}
+    <div className="flex min-h-screen">
+      <aside className="sticky top-0 flex h-screen w-64 shrink-0 flex-col border-r border-line bg-surface/70 px-4 py-5 backdrop-blur">
+        {/* Wordmark */}
+        <div className="mb-7 flex items-center gap-2.5 px-2">
+          <span className="grid h-8 w-8 place-items-center rounded-[9px] bg-forest text-forest-ink shadow-[0_4px_12px_-4px_rgba(31,61,48,.6)]">
+            <span className="font-display text-lg leading-none">£</span>
+          </span>
+          <span className="font-display text-[1.15rem] font-semibold leading-tight text-ink">Property<br />Accounts</span>
+        </div>
+
+        <SideNav groups={groups} />
+
+        <div className="mt-auto flex flex-col gap-3 border-t border-line pt-4">
+          {properties.length > 0 && (
+            <div>
+              <span className="mb-1.5 block px-1 text-[0.66rem] font-bold uppercase tracking-[0.12em] text-faint">Viewing</span>
+              <PropertySwitcher properties={properties} activeValue={activeValue} />
+            </div>
+          )}
           <form method="post" action="/api/logout">
-            <button type="submit" className="text-gray-600 hover:underline">Log out</button>
+            <button type="submit" className="w-full rounded-[9px] px-3 py-2 text-left text-[0.85rem] font-medium text-muted transition-colors hover:bg-surface-sunk hover:text-ink">
+              Log out
+            </button>
           </form>
         </div>
-      </nav>
-      <main className="p-6">{children}</main>
+      </aside>
+
+      <main className="min-w-0 flex-1 px-8 py-8">{children}</main>
     </div>
   );
 }
