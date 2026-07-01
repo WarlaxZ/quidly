@@ -1,21 +1,19 @@
 import { getPersonalTaxYearSummary, getPerPropertyBreakdown } from "../../../lib/data/personalSummary";
-import { getTaxYear } from "../../../lib/tax/taxYear";
+import { latestConfiguredTaxYear, taxYearOptions, isConfiguredTaxYear } from "../../../lib/tax/taxYear";
 import { formatGBP, penceToPounds } from "../../../lib/tax/money";
 import { saveOtherIncomeAction } from "./actions";
-
-function shiftTaxYear(taxYear: string, delta: number): string {
-  const start = Number(taxYear.slice(0, 4)) + delta;
-  return `${start}-${String((start + 1) % 100).padStart(2, "0")}`;
-}
+import { Banner } from "../_ui/Banner";
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ ty?: string; error?: string }> }) {
   const { ty, error } = await searchParams;
-  const taxYear = ty ?? getTaxYear(new Date());
+  const taxYear = ty ?? latestConfiguredTaxYear();
   const { summary, otherIncomePence, usePropertyAllowance, region } = await getPersonalTaxYearSummary(taxYear);
   const breakdown = await getPerPropertyBreakdown(taxYear);
 
-  const prev = shiftTaxYear(taxYear, -1);
-  const next = shiftTaxYear(taxYear, 1);
+  const opts = taxYearOptions();
+  const idx = opts.indexOf(taxYear);
+  const olderYear = idx >= 0 && idx < opts.length - 1 ? opts[idx + 1] : null; // opts newest-first
+  const newerYear = idx > 0 ? opts[idx - 1] : null;
 
   const LedgerRow = ({ label, pence, sign, sub, strong }: { label: string; pence: number; sign?: "plus" | "minus"; sub?: string; strong?: boolean }) => (
     <div className={`flex items-baseline justify-between gap-4 py-2 ${strong ? "border-t border-line-strong pt-3" : ""}`}>
@@ -38,13 +36,16 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           <p className="mt-1.5 text-sm text-muted">Your personal property position, ready for the SA105.</p>
         </div>
         <div className="flex items-center gap-1.5">
-          <a href={`/dashboard?ty=${prev}`} className="grid h-8 w-8 place-items-center rounded-lg border border-line-strong text-muted transition-colors hover:border-forest hover:text-forest" aria-label={`Previous tax year ${prev}`}>‹</a>
+          {olderYear && <a href={`/dashboard?ty=${olderYear}`} className="grid h-8 w-8 place-items-center rounded-lg border border-line-strong text-muted transition-colors hover:border-forest hover:text-forest" aria-label={`Previous tax year ${olderYear}`}>‹</a>}
           <span className="pill">Tax year {taxYear}</span>
-          <a href={`/dashboard?ty=${next}`} className="grid h-8 w-8 place-items-center rounded-lg border border-line-strong text-muted transition-colors hover:border-forest hover:text-forest" aria-label={`Next tax year ${next}`}>›</a>
+          {newerYear && <a href={`/dashboard?ty=${newerYear}`} className="grid h-8 w-8 place-items-center rounded-lg border border-line-strong text-muted transition-colors hover:border-forest hover:text-forest" aria-label={`Next tax year ${newerYear}`}>›</a>}
         </div>
       </header>
 
       {error && <p className="reveal rounded-lg border border-negative/30 bg-negative-soft px-4 py-3 text-sm text-negative">{error}</p>}
+      {!isConfiguredTaxYear(taxYear) && (
+        <Banner variant="info">Tax estimate uses {latestConfiguredTaxYear()} rates — {taxYear} isn&apos;t configured yet.</Banner>
+      )}
 
       {/* Hero: the ledger + the tax */}
       <section className="reveal grid gap-4 md:grid-cols-5" style={{ animationDelay: "60ms" }}>

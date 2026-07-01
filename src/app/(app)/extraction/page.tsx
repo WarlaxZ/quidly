@@ -1,9 +1,10 @@
 import { PageHeader } from "../_ui/PageHeader";
 import { MoneyInput } from "../_ui/MoneyInput";
 import { optimiseExtraction, type ExtractionInput } from "../../../lib/tax/extraction";
-import { getTaxYear } from "../../../lib/tax/taxYear";
+import { latestConfiguredTaxYear, taxYearOptions, isConfiguredTaxYear } from "../../../lib/tax/taxYear";
 import { formatGBP, penceToPounds, poundsToPence } from "../../../lib/tax/money";
 import type { Region } from "../../../lib/tax/types";
+import { Banner } from "../_ui/Banner";
 
 type Search = { ty?: string; profit?: string; other?: string; region?: string; ea?: string };
 
@@ -16,7 +17,7 @@ function overridePence(raw: string | undefined): number {
 
 export default async function ExtractionPage({ searchParams }: { searchParams: Promise<Search> }) {
   const sp = await searchParams;
-  const taxYear = sp.ty && /^\d{4}-\d{2}$/.test(sp.ty) ? sp.ty : getTaxYear(new Date());
+  const taxYear = sp.ty && /^\d{4}-\d{2}$/.test(sp.ty) ? sp.ty : latestConfiguredTaxYear();
   const region: Region = sp.region === "scotland" || sp.region === "englandWalesNI" ? sp.region : "englandWalesNI";
   const employmentAllowance = sp.ea === "1";
 
@@ -30,8 +31,7 @@ export default async function ExtractionPage({ searchParams }: { searchParams: P
 
   const result = input.profitBeforeSalaryPence > 0 ? optimiseExtraction(input) : null;
 
-  const startYear = Number(taxYear.slice(0, 4));
-  const yearOptions = [startYear - 1, startYear, startYear + 1].map((y) => `${y}-${String((y + 1) % 100).padStart(2, "0")}`);
+  const yearOptions = taxYearOptions();
 
   const BreakdownRow = ({ label, pence, bold }: { label: string; pence: number; bold?: boolean }) => (
     <div className={`flex items-baseline justify-between py-2 ${bold ? "border-t border-line-strong pt-3" : ""}`}>
@@ -64,6 +64,10 @@ export default async function ExtractionPage({ searchParams }: { searchParams: P
       <PageHeader title="Salary vs dividends" subtitle="Find the most tax-efficient way to pay yourself from your company.">
         <span className="pill">Tax year {taxYear}</span>
       </PageHeader>
+
+      {!isConfiguredTaxYear(taxYear) && (
+        <Banner variant="info">Tax estimate uses {latestConfiguredTaxYear()} rates — {taxYear} isn&apos;t configured yet.</Banner>
+      )}
 
       <form method="get" className="reveal card grid grid-cols-2 gap-4 p-5 md:grid-cols-4" style={{ animationDelay: "40ms" }}>
         <label className="col-span-2 block md:col-span-1">

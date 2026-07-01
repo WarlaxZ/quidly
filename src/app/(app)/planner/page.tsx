@@ -1,12 +1,13 @@
 import { listProperties } from "../../../lib/data/activeProperty";
 import { getScenarioInput } from "../../../lib/data/scenarioInput";
 import { runScenario, type ScenarioInput } from "../../../lib/tax/scenario";
-import { getTaxYear } from "../../../lib/tax/taxYear";
+import { latestConfiguredTaxYear, taxYearOptions, isConfiguredTaxYear } from "../../../lib/tax/taxYear";
 import { formatGBP, penceToPounds, poundsToPence } from "../../../lib/tax/money";
 import type { Region } from "../../../lib/tax/types";
 import { PageHeader } from "../_ui/PageHeader";
 import { YearNav } from "../_ui/YearNav";
 import { MoneyInput } from "../_ui/MoneyInput";
+import { Banner } from "../_ui/Banner";
 
 type Search = {
   ty?: string; basis?: string;
@@ -25,7 +26,7 @@ export default async function PlannerPage({ searchParams }: { searchParams: Prom
   const sp = await searchParams;
   // Guard the URL param: a non-"YYYY-YY" value would make taxYearRange() build an Invalid Date
   // and 500 at the Prisma layer. Fall back to the current tax year instead.
-  const taxYear = sp.ty && /^\d{4}-\d{2}$/.test(sp.ty) ? sp.ty : getTaxYear(new Date());
+  const taxYear = sp.ty && /^\d{4}-\d{2}$/.test(sp.ty) ? sp.ty : latestConfiguredTaxYear();
   const basis = sp.basis ?? "all";
 
   const properties = await listProperties();
@@ -46,8 +47,7 @@ export default async function PlannerPage({ searchParams }: { searchParams: Prom
   const { outcomes } = runScenario(input);
   const best = outcomes.reduce((a, b) => (b.pocketPence > a.pocketPence ? b : a));
 
-  const startYear = Number(taxYear.slice(0, 4));
-  const yearOptions = [startYear - 2, startYear - 1, startYear, startYear + 1].map((y) => `${y}-${String((y + 1) % 100).padStart(2, "0")}`);
+  const yearOptions = taxYearOptions();
 
   return (
     <div className="mx-auto max-w-5xl space-y-8">
@@ -56,6 +56,10 @@ export default async function PlannerPage({ searchParams }: { searchParams: Prom
           <YearNav basePath="/planner" paramKey="ty" current={taxYear} label="Tax year" extraQuery={{ basis }} />
         </PageHeader>
       </div>
+
+      {!isConfiguredTaxYear(taxYear) && (
+        <Banner variant="info">Tax estimate uses {latestConfiguredTaxYear()} rates — {taxYear} isn&apos;t configured yet.</Banner>
+      )}
 
       {personalProperties.length === 0 && (
         <div className="reveal" style={{ animationDelay: "30ms" }}>
