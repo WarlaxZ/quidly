@@ -161,7 +161,7 @@ export async function logUseOfHomeAction(formData: FormData) {
 
   const existing = await getUseOfHomeClaim(taxYear, property.id);
   if (existing) {
-    await prisma.transaction.update({ where: { id: existing.id }, data: { amountPence: annualPence, description, date: claimDate } });
+    await prisma.transaction.update({ where: { id: existing.id }, data: { amountPence: annualPence, description, date: claimDate, categoryId: category.id, direction: "out" } });
   } else {
     await createTransaction({
       propertyId: property.id,

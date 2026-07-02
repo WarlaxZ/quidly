@@ -9,6 +9,7 @@ export async function getUseOfHomeClaim(taxYear: string, propertyId: string): Pr
   const { start, end } = taxYearRange(taxYear);
   return prisma.transaction.findFirst({
     where: { propertyId, date: { gte: start, lt: end }, category: { name: USE_OF_HOME_CATEGORY } },
+    orderBy: { date: "desc" }, // deterministic if more than one somehow exists
     select: { id: true, amountPence: true },
   });
 }
