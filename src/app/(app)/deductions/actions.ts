@@ -9,6 +9,9 @@ import { parseAmountToPence } from "../../../lib/money/parseAmount";
 import { DEDUCTION_CATALOG } from "../../../lib/deductions/catalog";
 import { mileageClaimPence } from "../../../lib/tax/mileage";
 import { cumulativeMilesForTaxYear } from "../../../lib/data/mileage";
+import { useOfHomeAnnualPence, type UseOfHomeBasis } from "../../../lib/tax/useOfHome";
+import { taxYearRange } from "../../../lib/tax/taxYear";
+import { getUseOfHomeClaim } from "../../../lib/data/useOfHome";
 
 export async function dismissDeductionAction(formData: FormData) {
   await requireSession();
@@ -122,4 +125,55 @@ export async function logMileageAction(formData: FormData) {
   revalidatePath("/deductions");
   revalidatePath("/transactions");
   back(`Logged ${miles} miles (£${(amountPence / 100).toFixed(2)})`, true);
+}
+
+export async function logUseOfHomeAction(formData: FormData) {
+  await requireSession();
+  const taxYear = String(formData.get("taxYear") ?? "");
+  const back = (msg: string, ok = false): never =>
+    redirect(`/deductions?ty=${encodeURIComponent(taxYear)}&${ok ? "ok" : "error"}=${encodeURIComponent(msg)}`);
+  if (!/^\d{4}-\d{2}$/.test(taxYear)) return back("Invalid tax year.");
+
+  const propertyId = String(formData.get("propertyId") ?? "");
+  const property = propertyId
+    ? await prisma.property.findFirst({ where: { id: propertyId, ownershipType: "personal" } })
+    : null;
+  if (!property) return back("Choose a valid property.");
+
+  const basis = (String(formData.get("basis") ?? "monthly") === "weekly" ? "weekly" : "monthly") as UseOfHomeBasis;
+  let amountPence: number;
+  try {
+    amountPence = parseAmountToPence(String(formData.get("amount") ?? ""));
+  } catch (e) {
+    return back((e as Error).message);
+  }
+  const annualPence = useOfHomeAnnualPence(amountPence, basis);
+  if (annualPence <= 0) return back("Enter an amount greater than zero.");
+
+  const item = DEDUCTION_CATALOG.find((i) => i.key === "use-of-home");
+  if (!item) return back("Use-of-home item missing from catalog.");
+  const category = await prisma.category.findUnique({ where: { name: item.categoryName } });
+  if (!category) return back(`Category "${item.categoryName}" not found — run the seed.`);
+
+  const { end } = taxYearRange(taxYear);
+  const claimDate = new Date(end.getTime() - 24 * 60 * 60 * 1000); // 5 April — last day of the tax year
+  const description = `Use of home — £${(amountPence / 100).toFixed(2)}/${basis === "weekly" ? "week" : "month"}`;
+
+  const existing = await getUseOfHomeClaim(taxYear, property.id);
+  if (existing) {
+    await prisma.transaction.update({ where: { id: existing.id }, data: { amountPence: annualPence, description, date: claimDate } });
+  } else {
+    await createTransaction({
+      propertyId: property.id,
+      categoryId: category.id,
+      date: claimDate,
+      amountPence: annualPence,
+      direction: "out",
+      vendorId: null,
+      description,
+    });
+  }
+  revalidatePath("/deductions");
+  revalidatePath("/transactions");
+  back(`Use-of-home claim set to £${(annualPence / 100).toFixed(2)} for ${taxYear}`, true);
 }

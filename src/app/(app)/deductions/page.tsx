@@ -7,6 +7,8 @@ import { EmptyState } from "../_ui/EmptyState";
 import { dismissDeductionAction, undismissDeductionAction } from "./actions";
 import { LogItForm } from "./LogItForm";
 import { MileageForm } from "./MileageForm";
+import { UseOfHomeForm } from "./UseOfHomeForm";
+import { getUseOfHomeClaim } from "../../../lib/data/useOfHome";
 
 export default async function DeductionsPage({ searchParams }: { searchParams: Promise<{ ty?: string; ok?: string; error?: string }> }) {
   const { ty, ok, error } = await searchParams;
@@ -20,6 +22,8 @@ export default async function DeductionsPage({ searchParams }: { searchParams: P
     (active.propertyId && properties.some((p) => p.id === active.propertyId) ? active.propertyId : properties[0]?.id) ?? "";
   const activePropertyName = properties.find((p) => p.id === activePropertyId)?.name ?? "your property";
   const activeRoundTrip = properties.find((p) => p.id === activePropertyId)?.roundTripMiles ?? null;
+  const existingUoH = activePropertyId ? await getUseOfHomeClaim(taxYear, activePropertyId) : null;
+  const useOfHomeDefaultMonthlyPence = existingUoH ? Math.round(existingUoH.amountPence / 12) : 2_600;
 
   const considered = statuses.filter((s) => s.state === "consider");
   const covered = statuses.filter((s) => s.state === "covered");
@@ -66,6 +70,8 @@ export default async function DeductionsPage({ searchParams }: { searchParams: P
                   </div>
                   {item.action === "mileage" ? (
                     <MileageForm taxYear={taxYear} propertyId={activePropertyId} propertyName={activePropertyName} roundTripMiles={activeRoundTrip} />
+                  ) : item.action === "use-of-home" ? (
+                    <UseOfHomeForm taxYear={taxYear} propertyId={activePropertyId} propertyName={activePropertyName} defaultMonthlyPence={useOfHomeDefaultMonthlyPence} />
                   ) : (
                     <LogItForm taxYear={taxYear} itemKey={item.key} title={item.title} activePropertyId={activePropertyId} activePropertyName={activePropertyName} />
                   )}
