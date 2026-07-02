@@ -6,9 +6,9 @@ import { Banner } from "../_ui/Banner";
 import { EmptyState } from "../_ui/EmptyState";
 import { dismissDeductionAction, undismissDeductionAction } from "./actions";
 import { LogItForm } from "./LogItForm";
-import { MileageForm } from "./MileageForm";
 import { UseOfHomeForm } from "./UseOfHomeForm";
 import { getUseOfHomeClaim } from "../../../lib/data/useOfHome";
+import { listMileageTrips } from "../../../lib/data/mileage";
 
 export default async function DeductionsPage({ searchParams }: { searchParams: Promise<{ ty?: string; ok?: string; error?: string }> }) {
   const { ty, ok, error } = await searchParams;
@@ -21,7 +21,6 @@ export default async function DeductionsPage({ searchParams }: { searchParams: P
   const activePropertyId =
     (active.propertyId && properties.some((p) => p.id === active.propertyId) ? active.propertyId : properties[0]?.id) ?? "";
   const activePropertyName = properties.find((p) => p.id === activePropertyId)?.name ?? "your property";
-  const activeRoundTrip = properties.find((p) => p.id === activePropertyId)?.roundTripMiles ?? null;
   const existingUoH = activePropertyId ? await getUseOfHomeClaim(taxYear, activePropertyId) : null;
   const useOfHomeDefaultMonthlyPence = existingUoH ? Math.round(existingUoH.amountPence / 12) : 2_600;
 
@@ -29,6 +28,7 @@ export default async function DeductionsPage({ searchParams }: { searchParams: P
   const covered = statuses.filter((s) => s.state === "covered");
   const dismissed = statuses.filter((s) => s.state === "dismissed");
   const relevant = considered.length + covered.length;
+  const mileageTripCount = (await listMileageTrips(taxYear)).length;
 
   return (
     <div className="mx-auto max-w-3xl space-y-8">
@@ -69,7 +69,7 @@ export default async function DeductionsPage({ searchParams }: { searchParams: P
                     </form>
                   </div>
                   {item.action === "mileage" ? (
-                    <MileageForm taxYear={taxYear} propertyId={activePropertyId} propertyName={activePropertyName} roundTripMiles={activeRoundTrip} />
+                    <div className="mt-3"><a className="btn btn-primary" href={`/deductions/mileage?ty=${taxYear}`}>Log a trip</a></div>
                   ) : item.action === "use-of-home" ? (
                     <UseOfHomeForm taxYear={taxYear} propertyId={activePropertyId} propertyName={activePropertyName} defaultMonthlyPence={useOfHomeDefaultMonthlyPence} />
                   ) : (
@@ -85,7 +85,12 @@ export default async function DeductionsPage({ searchParams }: { searchParams: P
               <h2 className="font-display text-lg">Covered</h2>
               <ul className="space-y-1 text-sm">
                 {covered.map(({ item }) => (
-                  <li key={item.key} className="flex items-center gap-2 text-muted"><span className="text-forest">✓</span> {item.title}</li>
+                  <li key={item.key} className="flex items-center gap-2 text-muted">
+                    <span className="text-forest">✓</span> {item.title}
+                    {item.action === "mileage" && (
+                      <a className="underline hover:text-forest" href={`/deductions/mileage?ty=${taxYear}`}>Manage trips ({mileageTripCount})</a>
+                    )}
+                  </li>
                 ))}
               </ul>
             </section>
