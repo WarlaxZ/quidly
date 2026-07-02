@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { assessDeductions } from "./assess";
 import type { DeductionItem, DeductionTxn } from "./catalog";
+import { DEDUCTION_CATALOG } from "./catalog";
 
 const items: DeductionItem[] = [
   { key: "insurance", title: "Insurance", blurb: "", categoryName: "Rent, rates, insurance, ground rents", match: { descriptionKeywords: ["insurance"] }, action: "transaction" },
@@ -27,5 +28,27 @@ describe("assessDeductions", () => {
   });
   it("marks unmatched items as consider", () => {
     expect(assessDeductions(items, [], new Set()).every((r) => r.state === "consider")).toBe(true);
+  });
+});
+
+describe("assessDeductions over the real catalog", () => {
+  const stateOf = (key: string, txn: { categoryName: string; description: string | null }) =>
+    assessDeductions(DEDUCTION_CATALOG, [txn], new Set()).find((r) => r.item.key === key)!.state;
+
+  it("covers items on representative descriptions", () => {
+    expect(stateOf("landlord-insurance", { categoryName: "Rent, rates, insurance, ground rents", description: "Annual landlord insurance renewal" })).toBe("covered");
+    expect(stateOf("gas-safety", { categoryName: "Property repairs and maintenance", description: "Gas safety CP12 certificate" })).toBe("covered");
+    expect(stateOf("mileage", { categoryName: "Travel & mileage", description: null })).toBe("covered");
+    expect(stateOf("use-of-home", { categoryName: "Use of home", description: null })).toBe("covered");
+    expect(stateOf("replacement-domestic", { categoryName: "Other allowable property expenses", description: "Replacement carpet for lounge" })).toBe("covered");
+  });
+
+  it("does not false-cover on confounding descriptions", () => {
+    // "Repaint bedroom" must NOT tick off replacement-domestic (was matched by the removed "bed" keyword)
+    expect(stateOf("replacement-domestic", { categoryName: "Property repairs and maintenance", description: "Repaint bedroom" })).toBe("consider");
+    // a burglar alarm install must NOT tick off safety-servicing (was matched by the removed bare "alarm")
+    expect(stateOf("safety-servicing", { categoryName: "Property repairs and maintenance", description: "Burglar alarm installation" })).toBe("consider");
+    // estate-agent sale fees must NOT tick off letting-management (was matched by the removed bare "agent")
+    expect(stateOf("letting-management", { categoryName: "Legal, management, other professional fees", description: "Estate agent sale valuation" })).toBe("consider");
   });
 });
