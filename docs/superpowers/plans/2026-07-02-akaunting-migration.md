@@ -1059,15 +1059,18 @@ export async function readSnapshot(mysqlConfig: object): Promise<SourceSnapshot>
       for (const c of companies) c.name = byId.get(c.id) ?? c.name;
     }
 
+    // Include ALL contacts/categories regardless of deleted_at: a live transaction can
+    // reference a since-soft-deleted vendor or category, and we must still be able to
+    // resolve/map it. buildPlan only materialises the ones actually used.
     const [contactRows] = await conn.query(
-      `SELECT id, name, type, email, phone, address FROM \`${T("contacts")}\` WHERE deleted_at IS NULL`,
+      `SELECT id, name, type, email, phone, address FROM \`${T("contacts")}\``,
     );
     const contacts: SourceContact[] = (contactRows as any[]).map((r) => ({
       id: r.id, name: r.name, type: r.type,
       email: r.email ?? null, phone: r.phone ?? null, address: r.address ?? null,
     }));
 
-    const [catRows] = await conn.query(`SELECT id, name, type FROM \`${T("categories")}\` WHERE deleted_at IS NULL`);
+    const [catRows] = await conn.query(`SELECT id, name, type FROM \`${T("categories")}\``);
     const categories: SourceCategory[] = (catRows as any[]).map((r) => ({ id: r.id, name: r.name, type: r.type }));
 
     // Only real income/expense transactions (excludes '*-transfer' pseudo-types).
