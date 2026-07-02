@@ -52,6 +52,10 @@ describe("suggestCategory", () => {
   it("leaves a TAX-prefixed category with no Quidly equivalent unmapped", () => {
     expect(suggestCategory("TAX: Non-residential property finance costs", "expense")).toBeNull();
   });
+  it("does not exact-match an income category for an expense-typed input", () => {
+    expect(suggestCategory("Rent received", "expense")).toBeNull();
+    expect(suggestCategory("Other allowable property expenses", "income")).toBe("Other property income"); // income fallback, not the expense box
+  });
   it("does not fire on substring or semantic false positives", () => {
     expect(suggestCategory("Fixtures and fittings", "expense")).toBeNull(); // not "fix"→repairs
     expect(suggestCategory("Coffee for viewings", "expense")).toBeNull();   // not "fee"→professional

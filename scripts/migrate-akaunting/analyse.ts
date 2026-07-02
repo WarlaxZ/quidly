@@ -50,12 +50,14 @@ export async function analyse(dumpPath: string, opts: { force?: boolean } = {}):
   if (existsSync(mappingPath) && !opts.force) {
     currentMapping = JSON.parse(readFileSync(mappingPath, "utf8")) as Mapping;
     console.log(`Kept existing ${mappingPath} (use --force to regenerate).`);
-    const newIds = snapshot.categories
-      .filter((c) => c.type === "income" || c.type === "expense")
-      .map((c) => c.id)
-      .filter((id) => !currentMapping.categories.some((cd) => cd.akauntingId === id));
-    if (newIds.length > 0) {
-      console.warn(`WARNING: ${newIds.length} category id(s) in the dump are not in mapping.json — re-run with --force to include them.`);
+    const newCats = snapshot.categories.filter(
+      (c) =>
+        (c.type === "income" || c.type === "expense") &&
+        !currentMapping.categories.some((cd) => cd.akauntingId === c.id),
+    );
+    if (newCats.length > 0) {
+      const names = newCats.map((c) => `"${c.name}"`).join(", ");
+      console.warn(`WARNING: ${newCats.length} category(ies) in the dump are not in mapping.json (${names}) — re-run with --force to include them.`);
     }
   } else {
     currentMapping = buildInitialMapping(snapshot);

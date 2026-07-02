@@ -18,10 +18,12 @@ export function suggestCategory(
   // Strongest signal: the category name IS a Quidly category name, optionally behind a
   // "Label: " prefix (e.g. "TAX: Other allowable property expenses"). Common when the user
   // named their Akaunting categories after the SA105 boxes. Checked before keyword heuristics.
+  // Only these two Quidly categories are income; the rest are expense/finance/capital.
+  const INCOME_NAMES = new Set(["rent received", "other property income"]);
   const trimmed = lower.trim();
   for (const candidate of [trimmed, trimmed.replace(/^[^:]*:\s*/, "").trim()]) {
     const exact = QUIDLY_CATEGORY_NAMES.find((q) => q.toLowerCase() === candidate);
-    if (exact) return exact;
+    if (exact && (type === "income") === INCOME_NAMES.has(exact.toLowerCase())) return exact;
   }
   const stem = (w: string) => (w.endsWith("s") ? w.slice(0, -1) : w);
   const words = new Set((lower.match(/[a-z]+/g) ?? []).map(stem));
