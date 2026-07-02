@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { decimalStringToPence } from "./transform";
-import { validateMapping } from "./transform";
+import { decimalStringToPence, validateMapping } from "./transform";
 import type { SourceSnapshot, Mapping } from "./types";
 
 function baseSnapshot(): SourceSnapshot {
@@ -91,6 +90,19 @@ describe("validateMapping", () => {
     const m = baseMapping();
     m.properties = [];
     const errors = validateMapping(baseSnapshot(), m);
-    expect(errors.some((e) => e.includes("company") || e.includes("42 Example St") || e.includes("1"))).toBe(true);
+    expect(errors.some((e) => e.includes("42 Example St") && e.includes("(id 1)"))).toBe(true);
+  });
+  it("flags a category that has no decision entry at all (not just a null target)", () => {
+    const m = baseMapping();
+    m.categories = m.categories.filter((c) => c.akauntingId !== 5); // remove Repairs entirely
+    const errors = validateMapping(baseSnapshot(), m);
+    expect(errors.some((e) => e.includes("Repairs"))).toBe(true);
+  });
+  it("does not require a property decision for a company used only by non-GBP transactions", () => {
+    const s = baseSnapshot();
+    for (const t of s.transactions) t.currencyCode = "EUR"; // all txns non-GBP
+    const m = baseMapping();
+    m.properties = []; // no property decisions at all
+    expect(validateMapping(s, m)).toEqual([]);
   });
 });

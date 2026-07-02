@@ -29,9 +29,13 @@ export function validateMapping(snapshot: SourceSnapshot, mapping: Mapping): str
   const errors: string[] = [];
   const assume = mapping.currency.assume;
 
-  // (a) every company used by a transaction needs a property decision
+  // (a) every company used by a GBP transaction needs a property decision.
+  // (Mirrors the apply path: buildPlan only imports GBP transactions, so a company
+  //  that appears solely on skipped non-GBP transactions does not require a mapping.)
   const mappedCompanyIds = new Set(mapping.properties.map((p) => p.akauntingCompanyId));
-  const usedCompanyIds = new Set(snapshot.transactions.map((t) => t.companyId));
+  const usedCompanyIds = new Set(
+    snapshot.transactions.filter((t) => isGbp(t.currencyCode, assume)).map((t) => t.companyId),
+  );
   for (const companyId of usedCompanyIds) {
     if (!mappedCompanyIds.has(companyId)) {
       const name = snapshot.companies.find((c) => c.id === companyId)?.name ?? String(companyId);
