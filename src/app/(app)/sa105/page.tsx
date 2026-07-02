@@ -6,6 +6,8 @@ import { SA105_BOX_LABELS } from "../../../lib/tax/sa105Labels";
 import { PageHeader } from "../_ui/PageHeader";
 import { EmptyState } from "../_ui/EmptyState";
 import { Banner } from "../_ui/Banner";
+import { getDeductionStatuses } from "../../../lib/data/deductions";
+import { DeductionsNudge } from "../deductions/DeductionsNudge";
 
 export default async function Sa105Page({ searchParams }: { searchParams: Promise<{ ty?: string }> }) {
   const { ty } = await searchParams;
@@ -16,6 +18,7 @@ export default async function Sa105Page({ searchParams }: { searchParams: Promis
   const newerYear = idx > 0 ? opts[idx - 1] : null;
   const { summary, region } = await getPersonalTaxYearSummary(taxYear);
   const boxes = Object.keys(summary.sa105).sort((a, b) => Number(a) - Number(b));
+  const considerCount = (await getDeductionStatuses(taxYear)).filter((s) => s.state === "consider").length;
 
   return (
     <div className="mx-auto max-w-3xl space-y-8">
@@ -29,6 +32,8 @@ export default async function Sa105Page({ searchParams }: { searchParams: Promis
           <a className="btn btn-ghost" href={`/export/sa105.pdf?ty=${taxYear}`}>Download PDF</a>
         </PageHeader>
       </div>
+
+      <DeductionsNudge taxYear={taxYear} considerCount={considerCount} />
 
       {!isConfiguredTaxYear(taxYear) && (
         <Banner variant="info">Tax estimate uses {latestConfiguredTaxYear()} rates — {taxYear} isn&apos;t configured yet.</Banner>
