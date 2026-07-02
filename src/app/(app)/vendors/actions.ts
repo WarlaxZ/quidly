@@ -10,7 +10,9 @@ export async function addVendorAction(formData: FormData) {
   if (!name) return;
   await createVendor({
     name,
-    contactDetails: String(formData.get("contactDetails") ?? "") || null,
+    email: String(formData.get("email") ?? "") || null,
+    phone: String(formData.get("phone") ?? "") || null,
+    address: String(formData.get("address") ?? "") || null,
     notes: String(formData.get("notes") ?? "") || null,
   });
   revalidatePath("/vendors");

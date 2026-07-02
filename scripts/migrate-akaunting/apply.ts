@@ -83,7 +83,7 @@ export async function applyPlan(
     const existing = await prisma.vendor.findUnique({ where: { externalRef: v.externalRef } });
     if (existing) { vendorIdByRef.set(v.externalRef, existing.id); continue; }
     const created = await prisma.vendor.create({
-      data: { name: v.name, contactDetails: v.contactDetails, externalRef: v.externalRef },
+      data: { name: v.name, email: v.email, phone: v.phone, address: v.address, externalRef: v.externalRef },
     });
     vendorIdByRef.set(v.externalRef, created.id);
     result.vendorsCreated++;

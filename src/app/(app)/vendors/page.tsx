@@ -32,8 +32,16 @@ export default async function VendorsPage({
               <input name="name" placeholder="e.g. Plumber Ltd" required className="field" />
             </label>
             <label className="flex-1 min-w-[12rem]">
-              <span className="label">Contact (optional)</span>
-              <input name="contactDetails" placeholder="Email or phone" className="field" />
+              <span className="label">Email (optional)</span>
+              <input name="email" type="email" placeholder="name@example.com" className="field" />
+            </label>
+            <label className="flex-1 min-w-[12rem]">
+              <span className="label">Phone (optional)</span>
+              <input name="phone" placeholder="07123 456789" className="field" />
+            </label>
+            <label className="flex-1 min-w-[12rem]">
+              <span className="label">Address (optional)</span>
+              <input name="address" placeholder="1 High St" className="field" />
             </label>
             <label className="flex-1 min-w-[12rem]">
               <span className="label">Notes (optional)</span>
@@ -65,7 +73,15 @@ export default async function VendorsPage({
                 {vendors.map((v) => (
                   <tr key={v.id}>
                     <td className="font-medium text-ink">{v.name}</td>
-                    <td className="text-muted">{v.contactDetails ?? ""}</td>
+                    <td className="text-muted">
+                      {(v.email || v.phone || v.address) && (
+                        <div className="flex flex-col leading-tight">
+                          {v.email && <span>{v.email}</span>}
+                          {v.phone && <span>{v.phone}</span>}
+                          {v.address && <span>{v.address}</span>}
+                        </div>
+                      )}
+                    </td>
                     <td className="text-right">
                       <div className="flex items-center justify-end gap-3">
                         <a

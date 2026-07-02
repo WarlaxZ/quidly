@@ -22,8 +22,16 @@ export default async function EditVendorPage({ params }: { params: Promise<{ id:
             <input name="name" defaultValue={vendor.name} required className="field" />
           </label>
           <label className="block">
-            <span className="label">Contact</span>
-            <input name="contactDetails" defaultValue={vendor.contactDetails ?? ""} className="field" />
+            <span className="label">Email</span>
+            <input name="email" type="email" defaultValue={vendor.email ?? ""} className="field" />
+          </label>
+          <label className="block">
+            <span className="label">Phone</span>
+            <input name="phone" defaultValue={vendor.phone ?? ""} className="field" />
+          </label>
+          <label className="block">
+            <span className="label">Address</span>
+            <input name="address" defaultValue={vendor.address ?? ""} className="field" />
           </label>
           <label className="block">
             <span className="label">Notes</span>

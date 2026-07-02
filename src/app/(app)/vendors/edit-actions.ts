@@ -9,7 +9,9 @@ export async function updateVendorAction(formData: FormData) {
   const id = String(formData.get("id"));
   await updateVendor(id, {
     name: String(formData.get("name") ?? "").trim() || "Unnamed",
-    contactDetails: String(formData.get("contactDetails") ?? "") || null,
+    email: String(formData.get("email") ?? "") || null,
+    phone: String(formData.get("phone") ?? "") || null,
+    address: String(formData.get("address") ?? "") || null,
     notes: String(formData.get("notes") ?? "") || null,
   });
   revalidatePath("/vendors");
