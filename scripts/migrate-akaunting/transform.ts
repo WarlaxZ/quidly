@@ -1,3 +1,5 @@
+import type { SourceSnapshot, Mapping } from "./types";
+
 /**
  * Convert an Akaunting decimal amount string (up to 4dp) to integer pence,
  * without ever going through a float. Rounds half-up at the pence boundary
@@ -16,4 +18,41 @@ export function decimalStringToPence(amount: string): number {
   let pence = Number(whole || "0") * 100 + Number(fracPadded);
   if (thirdDigit !== "" && Number(thirdDigit) >= 5) pence += 1;
   return neg ? -pence : pence;
+}
+
+function isGbp(currencyCode: string, assume: string): boolean {
+  return currencyCode.toUpperCase() === assume.toUpperCase();
+}
+
+/** Returns human-readable errors; empty array means the mapping is ready to apply. */
+export function validateMapping(snapshot: SourceSnapshot, mapping: Mapping): string[] {
+  const errors: string[] = [];
+  const assume = mapping.currency.assume;
+
+  // (a) every company used by a transaction needs a property decision
+  const mappedCompanyIds = new Set(mapping.properties.map((p) => p.akauntingCompanyId));
+  const usedCompanyIds = new Set(snapshot.transactions.map((t) => t.companyId));
+  for (const companyId of usedCompanyIds) {
+    if (!mappedCompanyIds.has(companyId)) {
+      const name = snapshot.companies.find((c) => c.id === companyId)?.name ?? String(companyId);
+      errors.push(`No property mapping for Akaunting company "${name}" (id ${companyId}).`);
+    }
+  }
+
+  // (b) every category used by a GBP transaction needs a target
+  const gbpCategoryIds = new Set(
+    snapshot.transactions
+      .filter((t) => isGbp(t.currencyCode, assume) && t.categoryId != null)
+      .map((t) => t.categoryId as number),
+  );
+  const decisionById = new Map(mapping.categories.map((c) => [c.akauntingId, c]));
+  for (const categoryId of gbpCategoryIds) {
+    const decision = decisionById.get(categoryId);
+    if (!decision || decision.target == null) {
+      const name = snapshot.categories.find((c) => c.id === categoryId)?.name ?? String(categoryId);
+      errors.push(`Category "${name}" (id ${categoryId}) is used by transactions but has no target — set its "target" in mapping.json.`);
+    }
+  }
+
+  return errors;
 }
