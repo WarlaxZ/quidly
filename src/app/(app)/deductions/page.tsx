@@ -13,10 +13,11 @@ import { listMileageTrips } from "../../../lib/data/mileage";
 export default async function DeductionsPage({ searchParams }: { searchParams: Promise<{ ty?: string; ok?: string; error?: string }> }) {
   const { ty, ok, error } = await searchParams;
   const taxYear = ty ?? latestConfiguredTaxYear();
-  const [statuses, properties, active] = await Promise.all([
+  const [statuses, properties, active, mileageTrips] = await Promise.all([
     getDeductionStatuses(taxYear),
     listPersonalProperties(),
     getActiveProperty(),
+    listMileageTrips(taxYear),
   ]);
   const activePropertyId =
     (active.propertyId && properties.some((p) => p.id === active.propertyId) ? active.propertyId : properties[0]?.id) ?? "";
@@ -28,7 +29,7 @@ export default async function DeductionsPage({ searchParams }: { searchParams: P
   const covered = statuses.filter((s) => s.state === "covered");
   const dismissed = statuses.filter((s) => s.state === "dismissed");
   const relevant = considered.length + covered.length;
-  const mileageTripCount = (await listMileageTrips(taxYear)).length;
+  const mileageTripCount = mileageTrips.length;
 
   return (
     <div className="mx-auto max-w-3xl space-y-8">

@@ -9,6 +9,7 @@ import { parseAmountToPence } from "../../../lib/money/parseAmount";
 import { DEDUCTION_CATALOG } from "../../../lib/deductions/catalog";
 import { mileageClaimPence } from "../../../lib/tax/mileage";
 import { cumulativeMilesForTaxYear } from "../../../lib/data/mileage";
+import { safePath } from "../../../lib/auth/safePath";
 import { useOfHomeAnnualPence, type UseOfHomeBasis } from "../../../lib/tax/useOfHome";
 import { taxYearRange } from "../../../lib/tax/taxYear";
 import { getUseOfHomeClaim } from "../../../lib/data/useOfHome";
@@ -78,8 +79,8 @@ export async function logDeductionAction(formData: FormData) {
 export async function logMileageAction(formData: FormData) {
   await requireSession();
   const taxYear = String(formData.get("taxYear") ?? "");
-  const returnToRaw = String(formData.get("returnTo") ?? "/deductions");
-  const dest = returnToRaw.startsWith("/deductions") ? returnToRaw : "/deductions"; // avoid open redirect
+  const safe = safePath(String(formData.get("returnTo") ?? "/deductions")); // rejects non-local targets
+  const dest = safe.startsWith("/deductions") ? safe : "/deductions"; // restrict to the deductions subtree
   const back = (msg: string, ok = false): never =>
     redirect(`${dest}?ty=${encodeURIComponent(taxYear)}&${ok ? "ok" : "error"}=${encodeURIComponent(msg)}`);
   if (!/^\d{4}-\d{2}$/.test(taxYear)) return back("Invalid tax year.");

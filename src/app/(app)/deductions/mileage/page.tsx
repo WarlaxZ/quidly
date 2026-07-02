@@ -9,6 +9,7 @@ import { Banner } from "../../_ui/Banner";
 import { EmptyState } from "../../_ui/EmptyState";
 import { MileageForm } from "../MileageForm";
 import { deleteMileageAction } from "../actions";
+import { ConfirmSubmit } from "../../_ui/ConfirmSubmit";
 
 export default async function MileageLogPage({ searchParams }: { searchParams: Promise<{ ty?: string; ok?: string; error?: string }> }) {
   const { ty, ok, error } = await searchParams;
@@ -25,7 +26,7 @@ export default async function MileageLogPage({ searchParams }: { searchParams: P
 
   return (
     <div className="mx-auto max-w-3xl space-y-8">
-      <PageHeader title="Mileage log" subtitle={`Trips to ${activeProperty?.name ?? "your property"} — 45p/mile for the first 10,000, then 25p`}>
+      <PageHeader title="Mileage log" subtitle="Your mileage trips this tax year — 45p/mile for the first 10,000, then 25p">
         <div className="flex items-center gap-1.5">
           {taxYearOptions().map((y) => (
             <a key={y} href={`/deductions/mileage?ty=${y}`} className={`pill ${y === taxYear ? "" : "opacity-60"}`}>{y}</a>
@@ -76,7 +77,7 @@ export default async function MileageLogPage({ searchParams }: { searchParams: P
                         <form action={deleteMileageAction}>
                           <input type="hidden" name="taxYear" value={taxYear} />
                           <input type="hidden" name="id" value={t.id} />
-                          <button type="submit" className="text-faint hover:text-forest" aria-label="Delete trip">✕</button>
+                          <ConfirmSubmit confirm="Delete this trip? This can't be undone." className="text-faint hover:text-forest">✕</ConfirmSubmit>
                         </form>
                       </td>
                     </tr>

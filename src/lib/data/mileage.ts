@@ -32,7 +32,7 @@ export interface MileageTripRow {
 export async function listMileageTrips(taxYear: string): Promise<MileageTripRow[]> {
   const { start, end } = taxYearRange(taxYear);
   const rows = await prisma.transaction.findMany({
-    where: { date: { gte: start, lt: end }, property: { ownershipType: "personal" }, category: { name: TRAVEL_CATEGORY } },
+    where: { date: { gte: start, lt: end }, property: { ownershipType: "personal" }, category: { name: TRAVEL_CATEGORY }, miles: { not: null } },
     orderBy: { date: "desc" },
     select: { id: true, date: true, description: true, miles: true, amountPence: true },
   });
