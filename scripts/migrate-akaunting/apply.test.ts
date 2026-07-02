@@ -18,7 +18,7 @@ beforeAll(async () => {
   for (const dir of readdirSync(migDir).filter((d) => d.match(/^\d/)).sort()) {
     raw.exec(readFileSync(join(migDir, dir, "migration.sql"), "utf8"));
   }
-  // Seed the categories the transform targets.
+  // Seed the categories this test's mapping targets.
   const cats: [string, string, string | null][] = [
     ["Rent received", "income", "20"],
     ["Property repairs and maintenance", "expense", "25"],

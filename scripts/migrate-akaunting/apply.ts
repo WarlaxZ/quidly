@@ -18,14 +18,17 @@ export interface ApplyResult {
   skipped: number;
 }
 
-async function resolveProperty(prisma: PrismaClient, d: PropertyDecision): Promise<string> {
-  if ("existingPropertyId" in d.target) return d.target.existingPropertyId;
+async function resolveProperty(
+  prisma: PrismaClient,
+  d: PropertyDecision,
+): Promise<{ id: string; created: boolean }> {
+  if ("existingPropertyId" in d.target) return { id: d.target.existingPropertyId, created: false };
   const existing = await prisma.property.findFirst({ where: { name: d.target.name } });
-  if (existing) return existing.id;
+  if (existing) return { id: existing.id, created: false };
   const created = await prisma.property.create({
     data: { name: d.target.name, address: d.target.address ?? null },
   });
-  return created.id;
+  return { id: created.id, created: true };
 }
 
 export async function applyPlan(
@@ -45,7 +48,11 @@ export async function applyPlan(
   };
 
   if (opts.dryRun) {
-    result.propertiesCreated = mapping.properties.filter((p) => "createNew" in p.target).length;
+    for (const p of mapping.properties) {
+      if ("existingPropertyId" in p.target) continue;
+      const existing = await prisma.property.findFirst({ where: { name: p.target.name } });
+      if (!existing) result.propertiesCreated++;
+    }
     result.vendorsCreated = plan.vendors.length;
     result.transactionsCreated = plan.transactions.length;
     return result;
@@ -59,10 +66,14 @@ export async function applyPlan(
   // one-shot migration tool.
   const propertyIdByCompany = new Map<number, string>();
   for (const d of mapping.properties) {
-    const before = await prisma.property.count();
-    const id = await resolveProperty(prisma, d);
-    if ((await prisma.property.count()) > before) result.propertiesCreated++;
+    const { id, created } = await resolveProperty(prisma, d);
     propertyIdByCompany.set(d.akauntingCompanyId, id);
+    if (created) {
+      result.propertiesCreated++;
+      console.log(`Created property "${d.akauntingCompanyName}" (${id}).`);
+    } else {
+      console.log(`Using existing property (${id}) for Akaunting company "${d.akauntingCompanyName}".`);
+    }
   }
 
   const vendorIdByRef = new Map<string, string>();
@@ -111,6 +122,8 @@ export async function applyPlan(
       const txn = await prisma.transaction.findUnique({ where: { externalRef: `akaunting:transaction:${a.transactionId}` } });
       if (!txn) continue;
       const dest = join(uploads, `${a.transactionId}-${basename(a.filename)}`);
+      const alreadyImported = await prisma.attachment.findFirst({ where: { filePath: dest } });
+      if (alreadyImported) continue; // idempotent: attachment already copied on a prior run
       copyFileSync(src, dest);
       const att = await prisma.attachment.create({ data: { filePath: dest, originalName: a.filename } });
       await prisma.transaction.update({ where: { id: txn.id }, data: { attachmentId: att.id } });
