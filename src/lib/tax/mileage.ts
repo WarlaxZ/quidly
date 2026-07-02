@@ -35,3 +35,17 @@ export function mileageClaimPence(milesThisTrip: number, cumulativeMilesBefore: 
   const atAfter = miles - atFirst;
   return atFirst * r.firstRatePence + atAfter * r.afterRatePence;
 }
+
+export interface MileageSummary {
+  totalMiles: number;
+  totalPence: number;
+  remainingAt45p: number;
+}
+
+/** Totals for the mileage log's summary line. remainingAt45p clamps at 0 past the threshold. */
+export function mileageSummary(trips: { miles: number; amountPence: number }[], taxYear: string): MileageSummary {
+  const totalMiles = trips.reduce((sum, t) => sum + (t.miles || 0), 0);
+  const totalPence = trips.reduce((sum, t) => sum + (t.amountPence || 0), 0);
+  const remainingAt45p = Math.max(0, mileageRatesFor(taxYear).thresholdMiles - totalMiles);
+  return { totalMiles, totalPence, remainingAt45p };
+}
