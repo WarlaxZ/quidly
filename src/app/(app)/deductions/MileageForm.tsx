@@ -7,11 +7,12 @@ interface Props {
   propertyId: string;
   propertyName: string;
   roundTripMiles: number | null;
+  returnTo?: string;
 }
 
 const PURPOSES = ["Inspection", "Viewing", "Meeting a tradesperson", "Repair", "Other"];
 
-export function MileageForm({ taxYear, propertyId, propertyName, roundTripMiles }: Props) {
+export function MileageForm({ taxYear, propertyId, propertyName, roundTripMiles, returnTo }: Props) {
   const [open, setOpen] = useState(false);
   if (!open) {
     return (
@@ -24,6 +25,7 @@ export function MileageForm({ taxYear, propertyId, propertyName, roundTripMiles 
     <form action={logMileageAction} className="mt-3 w-full space-y-3 border-t border-line pt-3">
       <input type="hidden" name="taxYear" value={taxYear} />
       <input type="hidden" name="propertyId" value={propertyId} />
+      {returnTo && <input type="hidden" name="returnTo" value={returnTo} />}
       <div className="grid grid-cols-2 gap-3">
         <label className="text-sm">
           <span className="label">Date</span>

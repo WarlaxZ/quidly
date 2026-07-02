@@ -78,8 +78,10 @@ export async function logDeductionAction(formData: FormData) {
 export async function logMileageAction(formData: FormData) {
   await requireSession();
   const taxYear = String(formData.get("taxYear") ?? "");
+  const returnToRaw = String(formData.get("returnTo") ?? "/deductions");
+  const dest = returnToRaw.startsWith("/deductions") ? returnToRaw : "/deductions"; // avoid open redirect
   const back = (msg: string, ok = false): never =>
-    redirect(`/deductions?ty=${encodeURIComponent(taxYear)}&${ok ? "ok" : "error"}=${encodeURIComponent(msg)}`);
+    redirect(`${dest}?ty=${encodeURIComponent(taxYear)}&${ok ? "ok" : "error"}=${encodeURIComponent(msg)}`);
   if (!/^\d{4}-\d{2}$/.test(taxYear)) return back("Invalid tax year.");
 
   const propertyId = String(formData.get("propertyId") ?? "");
@@ -123,6 +125,7 @@ export async function logMileageAction(formData: FormData) {
   }
 
   revalidatePath("/deductions");
+  revalidatePath("/deductions/mileage");
   revalidatePath("/transactions");
   back(`Logged ${miles} miles (£${(amountPence / 100).toFixed(2)})`, true);
 }
@@ -176,4 +179,22 @@ export async function logUseOfHomeAction(formData: FormData) {
   revalidatePath("/deductions");
   revalidatePath("/transactions");
   back(`Use-of-home claim set to £${(annualPence / 100).toFixed(2)} for ${taxYear}`, true);
+}
+
+export async function deleteMileageAction(formData: FormData) {
+  await requireSession();
+  const taxYear = String(formData.get("taxYear") ?? "");
+  const back = (msg: string, ok = false): never =>
+    redirect(`/deductions/mileage?ty=${encodeURIComponent(taxYear)}&${ok ? "ok" : "error"}=${encodeURIComponent(msg)}`);
+
+  const id = String(formData.get("id") ?? "");
+  const txn = id ? await prisma.transaction.findUnique({ where: { id }, include: { category: true, property: true } }) : null;
+  if (!txn || txn.category.name !== "Travel & mileage" || txn.property.ownershipType !== "personal") {
+    return back("That trip could not be found.");
+  }
+  await prisma.transaction.delete({ where: { id } });
+  revalidatePath("/deductions/mileage");
+  revalidatePath("/deductions");
+  revalidatePath("/transactions");
+  back("Trip deleted", true);
 }
