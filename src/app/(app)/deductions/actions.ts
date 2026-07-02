@@ -33,6 +33,7 @@ export async function logDeductionAction(formData: FormData) {
   const taxYear = String(formData.get("taxYear") ?? "");
   const back = (msg: string, ok = false): never =>
     redirect(`/deductions?ty=${encodeURIComponent(taxYear)}&${ok ? "ok" : "error"}=${encodeURIComponent(msg)}`);
+  if (!/^\d{4}-\d{2}$/.test(taxYear)) return back("Invalid tax year.");
 
   const item = DEDUCTION_CATALOG.find((i) => i.key === String(formData.get("itemKey") ?? ""));
   if (!item) return back("Unknown deduction item.");
@@ -76,6 +77,7 @@ export async function logMileageAction(formData: FormData) {
   const taxYear = String(formData.get("taxYear") ?? "");
   const back = (msg: string, ok = false): never =>
     redirect(`/deductions?ty=${encodeURIComponent(taxYear)}&${ok ? "ok" : "error"}=${encodeURIComponent(msg)}`);
+  if (!/^\d{4}-\d{2}$/.test(taxYear)) return back("Invalid tax year.");
 
   const propertyId = String(formData.get("propertyId") ?? "");
   const property = propertyId
@@ -104,10 +106,12 @@ export async function logMileageAction(formData: FormData) {
     date,
     amountPence,
     direction: "out",
+    vendorId: null,
     description: `${purpose} — ${miles} miles`,
     miles,
   });
 
+  // Saves the SUBMITTED miles as the property's round trip (the user may have edited the field).
   if (formData.get("remember") === "on") {
     await prisma.property.update({ where: { id: property.id }, data: { roundTripMiles: miles } });
   }
