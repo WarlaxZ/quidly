@@ -51,3 +51,5 @@ next-env.d.ts
 
 # Akaunting migration working files (may contain financial data)
 /akaunting-migration/
+
+.superpowers/
