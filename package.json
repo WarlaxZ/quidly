@@ -11,7 +11,9 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
-    "set-password": "tsx scripts/set-password.ts"
+    "set-password": "tsx scripts/set-password.ts",
+    "migrate:akaunting:analyse": "tsx scripts/migrate-akaunting/index.ts analyse",
+    "migrate:akaunting:apply": "tsx scripts/migrate-akaunting/index.ts apply"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.107.0",
@@ -33,6 +35,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "mysql2": "^3.22.5",
     "prisma": "^7.8.0",
     "tailwindcss": "^4",
     "tsx": "^4.22.4",
