@@ -21,6 +21,17 @@ describe("decimalStringToPence", () => {
   it("handles negatives", () => {
     expect(decimalStringToPence("-50.00")).toBe(-5000);
   });
+  it("rounds negatives half-away-from-zero", () => {
+    expect(decimalStringToPence("-0.125")).toBe(-13);
+  });
+  it("ignores the 4th decimal digit (3rd digit is the sole tie-breaker)", () => {
+    expect(decimalStringToPence("1.9994")).toBe(200); // 3rd digit 9 rounds up; 4th digit ignored
+    expect(decimalStringToPence("1.9944")).toBe(199); // 3rd digit 4 rounds down
+  });
+  it("throws on empty input rather than silently returning 0", () => {
+    expect(() => decimalStringToPence("")).toThrow();
+    expect(() => decimalStringToPence("   ")).toThrow();
+  });
   it("tolerates surrounding whitespace and leading +", () => {
     expect(decimalStringToPence(" +9.99 ")).toBe(999);
   });
