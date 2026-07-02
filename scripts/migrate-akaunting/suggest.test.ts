@@ -56,6 +56,14 @@ describe("suggestCategory", () => {
     expect(suggestCategory("Rent received", "expense")).toBeNull();
     expect(suggestCategory("Other allowable property expenses", "income")).toBe("Other property income"); // income fallback, not the expense box
   });
+  it("uses transaction descriptions to map a generically-named income category to rent", () => {
+    expect(suggestCategory("Deposit", "income", ["Rent", "Rent", "June rent"])).toBe("Rent received");
+    expect(suggestCategory("Deposit", "income", [])).toBe("Other property income"); // no evidence → box 21
+    expect(suggestCategory("Deposit", "income", ["Security deposit refund"])).toBe("Other property income");
+  });
+  it("still routes clearly-other income names to box 21 regardless of descriptions", () => {
+    expect(suggestCategory("Parking fees", "income", ["Rent"])).toBe("Other property income");
+  });
   it("does not fire on substring or semantic false positives", () => {
     expect(suggestCategory("Fixtures and fittings", "expense")).toBeNull(); // not "fix"→repairs
     expect(suggestCategory("Coffee for viewings", "expense")).toBeNull();   // not "fee"→professional

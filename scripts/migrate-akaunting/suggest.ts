@@ -13,6 +13,7 @@ import { QUIDLY_CATEGORY_NAMES, type QuidlyCategoryName } from "./types";
 export function suggestCategory(
   name: string,
   type: "income" | "expense",
+  sampleDescriptions: string[] = [],
 ): QuidlyCategoryName | null {
   const lower = name.toLowerCase();
   // Strongest signal: the category name IS a Quidly category name, optionally behind a
@@ -31,8 +32,19 @@ export function suggestCategory(
   const phrase = (...ps: string[]) => ps.some((p) => lower.includes(p));
 
   if (type === "income") {
-    if (phrase("rent received", "rental income") || word("rent")) return "Rent received";
-    return "Other property income"; // all other income → box 21
+    // Clear rent signals in the category name → box 20.
+    if (phrase("rent received", "rental income") || word("rent", "rental", "letting", "tenancy", "tenant", "lease", "landlord")) {
+      return "Rent received";
+    }
+    // Clear "other income" signals in the name → box 21.
+    if (word("parking", "service", "insurance", "interest", "sundry", "misc", "miscellaneous", "other", "commission", "levy", "fee", "charge")) {
+      return "Other property income";
+    }
+    // Ambiguous name (e.g. "Deposit", "Payment", "Income", "Bank"): use the transactions'
+    // descriptions — if they mention rent, it's rent (box 20); otherwise other income (box 21).
+    const descs = sampleDescriptions.join(" ").toLowerCase();
+    if (/\brent\b/.test(descs)) return "Rent received";
+    return "Other property income";
   }
 
   // Finance interest — but NOT capital repayments or interest-free purchases (not box 44).
