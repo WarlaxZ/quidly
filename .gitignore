@@ -48,3 +48,6 @@ next-env.d.ts
 
 # Uploaded receipts
 /uploads/
+
+# Akaunting migration working files (may contain financial data)
+/akaunting-migration/

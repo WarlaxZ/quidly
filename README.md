@@ -71,6 +71,29 @@ npm test                        # 198 tests
 
 Prisma v7 note: the datasource URL is configured in `prisma.config.ts` (read from `DATABASE_URL`), and migrations are hand-authored SQL applied with `migrate deploy` — **not** `migrate dev`.
 
+## Migrating from Akaunting
+
+Import your existing Akaunting data (transactions, vendors, categories) into Quidly.
+
+**Prerequisites:** Docker (for the analyse step) and a MySQL/MariaDB dump of your Akaunting database (`.sql`).
+
+```bash
+# 1. Analyse the dump — loads it into a throwaway MariaDB and writes a review pack
+npm run migrate:akaunting:analyse -- ./akaunting-migration/dump.sql
+
+# 2. Review akaunting-migration/report.md (incl. "what's missing") and edit
+#    akaunting-migration/mapping.json — set a "target" for any unmapped category.
+
+# 3. Dry-run (writes nothing), then apply for real
+npm run migrate:akaunting:apply -- --dry-run
+npm run migrate:akaunting:apply
+
+# Optional: also copy receipt files from Akaunting's storage folder
+npm run migrate:akaunting:apply -- --attachments-dir /path/to/akaunting/storage
+```
+
+Each Akaunting *company* becomes a Quidly *property*. Amounts are treated as GBP; non-GBP transactions are listed and skipped. The import is idempotent — re-running is safe and never duplicates (imported rows are tagged with an `externalRef`). Files under `akaunting-migration/` are git-ignored as they may contain financial data.
+
 ## Configuration
 
 `.env.example` is the annotated source of truth; the table below summarises it.
