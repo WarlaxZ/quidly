@@ -3,12 +3,13 @@ import { getActiveProperty, listProperties } from "../../../lib/data/activePrope
 import { listVendors } from "../../../lib/data/vendors";
 import { listCategories } from "../../../lib/data/categories";
 import { formatGBP } from "../../../lib/tax/money";
-import { addTransactionAction, deleteTransactionAction } from "./actions";
+import { addTransactionAction } from "./actions";
 import { PageHeader } from "../_ui/PageHeader";
 import { Banner } from "../_ui/Banner";
 import { EmptyState } from "../_ui/EmptyState";
 import { MoneyInput } from "../_ui/MoneyInput";
-import { ConfirmSubmit } from "../_ui/ConfirmSubmit";
+import { VendorSelect } from "../_ui/VendorSelect";
+import { TransactionRow } from "../_ui/TransactionRow";
 
 export default async function TransactionsPage({
   searchParams,
@@ -97,7 +98,7 @@ export default async function TransactionsPage({
 
       {/* Add transaction form */}
       <section className="reveal" style={{ animationDelay: "120ms" }}>
-        <form action={addTransactionAction} className="card p-5">
+        <form action={addTransactionAction} encType="multipart/form-data" className="card p-5">
           <div className="mb-4 text-[0.7rem] font-bold uppercase tracking-[0.1em] text-faint">Add transaction</div>
           <div className="flex flex-wrap items-end gap-3">
             {active.isAll ? (
@@ -141,18 +142,20 @@ export default async function TransactionsPage({
             </label>
             <label className="flex-1 min-w-[10rem]">
               <span className="label">Vendor</span>
-              <select name="vendorId" className="field">
-                <option value="">— vendor —</option>
-                {vendors.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.name}
-                  </option>
-                ))}
-              </select>
+              <VendorSelect vendors={vendors} />
             </label>
             <label className="flex-1 min-w-[12rem]">
               <span className="label">Description</span>
-              <input name="description" placeholder="Optional note" className="field" />
+              <textarea name="description" placeholder="Optional note" rows={2} className="field" />
+            </label>
+            <label className="flex-1 min-w-[12rem]">
+              <span className="label">Receipt (optional)</span>
+              <input
+                type="file"
+                name="file"
+                accept="image/jpeg,image/png,application/pdf"
+                className="field"
+              />
             </label>
             <button type="submit" className="btn btn-primary">
               Add
@@ -185,35 +188,18 @@ export default async function TransactionsPage({
                 </thead>
                 <tbody>
                   {txns.map((t) => (
-                    <tr key={t.id}>
-                      <td className="text-muted">{t.date.toISOString().slice(0, 10)}</td>
-                      {active.isAll && (
-                        <td className="text-muted">{t.property?.name}</td>
-                      )}
-                      <td className="font-medium text-ink">{t.category.name}</td>
-                      <td className="text-muted">{t.vendor?.name ?? ""}</td>
-                      <td className="text-muted">{t.description ?? ""}</td>
-                      <td className="money text-right">
-                        {t.direction === "out" ? "−" : ""}
-                        {formatGBP(t.amountPence)}
-                      </td>
-                      <td className="text-right">
-                        <div className="flex items-center justify-end gap-3">
-                          <a
-                            href={`/transactions/${t.id}/edit`}
-                            className="text-sm font-medium text-forest hover:underline"
-                          >
-                            Edit
-                          </a>
-                          <form action={deleteTransactionAction}>
-                            <input type="hidden" name="id" value={t.id} />
-                            <ConfirmSubmit confirm="Delete this transaction? This can't be undone.">
-                              Delete
-                            </ConfirmSubmit>
-                          </form>
-                        </div>
-                      </td>
-                    </tr>
+                    <TransactionRow
+                      key={t.id}
+                      id={t.id}
+                      date={t.date.toISOString().slice(0, 10)}
+                      showProperty={active.isAll}
+                      propertyName={t.property?.name ?? ""}
+                      categoryName={t.category.name}
+                      vendorId={t.vendorId}
+                      vendorName={t.vendor?.name ?? ""}
+                      description={t.description ?? ""}
+                      amountLabel={`${t.direction === "out" ? "−" : ""}${formatGBP(t.amountPence)}`}
+                    />
                   ))}
                 </tbody>
               </table>
