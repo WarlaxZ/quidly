@@ -13,9 +13,11 @@ describe("suggestCategory", () => {
     expect(suggestCategory("Repairs", "expense")).toBe("Property repairs and maintenance");
     expect(suggestCategory("Boiler maintenance", "expense")).toBe("Property repairs and maintenance");
   });
-  it("maps mortgage/interest/loan to box 44", () => {
+  it("maps mortgage/interest to box 44 but not capital repayments", () => {
     expect(suggestCategory("Mortgage interest", "expense")).toBe("Mortgage / loan interest");
-    expect(suggestCategory("Loan repayment", "expense")).toBe("Mortgage / loan interest");
+    expect(suggestCategory("Loan interest", "expense")).toBe("Mortgage / loan interest");
+    expect(suggestCategory("Loan repayment", "expense")).toBeNull();
+    expect(suggestCategory("Mortgage repayment", "expense")).toBeNull();
   });
   it("maps insurance/rates/ground rent/service charge to box 24", () => {
     expect(suggestCategory("Landlord insurance", "expense")).toBe("Rent, rates, insurance, ground rents");
@@ -40,5 +42,12 @@ describe("suggestCategory", () => {
   });
   it("never suggests an income category for an expense", () => {
     expect(suggestCategory("Rent", "expense")).not.toBe("Rent received");
+  });
+  it("does not fire on substring or semantic false positives", () => {
+    expect(suggestCategory("Fixtures and fittings", "expense")).toBeNull(); // not "fix"→repairs
+    expect(suggestCategory("Coffee for viewings", "expense")).toBeNull();   // not "fee"→professional
+    expect(suggestCategory("Interest free appliance", "expense")).toBeNull(); // not box 44
+    expect(suggestCategory("Extension lead", "expense")).toBeNull();        // not capital
+    expect(suggestCategory("Current account", "income")).toBe("Other property income"); // "current"≠rent
   });
 });
