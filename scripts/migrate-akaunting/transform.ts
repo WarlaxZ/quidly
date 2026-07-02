@@ -1,4 +1,7 @@
-import type { SourceSnapshot, Mapping } from "./types";
+import type {
+  SourceSnapshot, Mapping,
+  MigrationPlan, TransactionPayload, VendorPayload, SkippedTransaction, QuidlyCategoryName,
+} from "./types";
 
 /**
  * Convert an Akaunting decimal amount string (up to 4dp) to integer pence,
@@ -59,4 +62,55 @@ export function validateMapping(snapshot: SourceSnapshot, mapping: Mapping): str
   }
 
   return errors;
+}
+
+function contactDetails(c: { email: string | null; phone: string | null; address: string | null }): string | null {
+  const parts = [c.email, c.phone, c.address].filter((p): p is string => !!p && p.trim() !== "");
+  return parts.length ? parts.join(" | ") : null;
+}
+
+/** Build the migration plan. Assumes validateMapping returned no errors. */
+export function buildPlan(snapshot: SourceSnapshot, mapping: Mapping): MigrationPlan {
+  const assume = mapping.currency.assume;
+  const targetByCategoryId = new Map<number, QuidlyCategoryName | null>(
+    mapping.categories.map((c) => [c.akauntingId, c.target]),
+  );
+
+  const transactions: TransactionPayload[] = [];
+  const skipped: SkippedTransaction[] = [];
+  const usedContactIds = new Set<number>();
+
+  for (const t of snapshot.transactions) {
+    if (!isGbp(t.currencyCode, assume)) {
+      skipped.push({ id: t.id, reason: `non-GBP currency ${t.currencyCode}` });
+      continue;
+    }
+    const target = t.categoryId != null ? targetByCategoryId.get(t.categoryId) : null;
+    if (!target) {
+      skipped.push({ id: t.id, reason: `no category target for category id ${t.categoryId}` });
+      continue;
+    }
+    const vendorExternalRef = t.contactId != null ? `akaunting:contact:${t.contactId}` : null;
+    if (t.contactId != null) usedContactIds.add(t.contactId);
+    transactions.push({
+      externalRef: `akaunting:transaction:${t.id}`,
+      akauntingCompanyId: t.companyId,
+      date: t.paidAt,
+      amountPence: decimalStringToPence(t.amount),
+      direction: t.type === "income" ? "in" : "out",
+      categoryName: target,
+      vendorExternalRef,
+      description: t.description,
+    });
+  }
+
+  const vendors: VendorPayload[] = snapshot.contacts
+    .filter((c) => usedContactIds.has(c.id))
+    .map((c) => ({
+      externalRef: `akaunting:contact:${c.id}`,
+      name: c.name,
+      contactDetails: contactDetails(c),
+    }));
+
+  return { vendors, transactions, skipped };
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { decimalStringToPence, validateMapping } from "./transform";
+import { decimalStringToPence, validateMapping, buildPlan } from "./transform";
 import type { SourceSnapshot, Mapping } from "./types";
 
 function baseSnapshot(): SourceSnapshot {
@@ -104,5 +104,54 @@ describe("validateMapping", () => {
     const m = baseMapping();
     m.properties = []; // no property decisions at all
     expect(validateMapping(s, m)).toEqual([]);
+  });
+});
+
+describe("buildPlan", () => {
+  it("builds vendor and transaction payloads for GBP transactions", () => {
+    const plan = buildPlan(baseSnapshot(), baseMapping());
+    expect(plan.vendors).toEqual([
+      { externalRef: "akaunting:contact:7", name: "Acme Plumbing", contactDetails: null },
+    ]);
+    expect(plan.transactions).toEqual([
+      {
+        externalRef: "akaunting:transaction:100",
+        akauntingCompanyId: 1,
+        date: "2025-06-01T00:00:00.000Z",
+        amountPence: 15000,
+        direction: "out",
+        categoryName: "Property repairs and maintenance",
+        vendorExternalRef: "akaunting:contact:7",
+        description: "Leak",
+      },
+      {
+        externalRef: "akaunting:transaction:101",
+        akauntingCompanyId: 1,
+        date: "2025-06-05T00:00:00.000Z",
+        amountPence: 80000,
+        direction: "in",
+        categoryName: "Rent received",
+        vendorExternalRef: null,
+        description: "June rent",
+      },
+    ]);
+    expect(plan.skipped).toEqual([]);
+  });
+
+  it("skips non-GBP transactions with a reason and omits their vendor-only references", () => {
+    const s = baseSnapshot();
+    s.transactions[0].currencyCode = "EUR";
+    const plan = buildPlan(s, baseMapping());
+    expect(plan.transactions.map((t) => t.externalRef)).toEqual(["akaunting:transaction:101"]);
+    expect(plan.skipped).toEqual([{ id: 100, reason: "non-GBP currency EUR" }]);
+    // contact 7 was only used by the skipped txn → not created
+    expect(plan.vendors).toEqual([]);
+  });
+
+  it("builds contactDetails from email/phone/address when present", () => {
+    const s = baseSnapshot();
+    s.contacts[0] = { id: 7, name: "Acme Plumbing", type: "vendor", email: "a@b.com", phone: "0123", address: "1 High St" };
+    const plan = buildPlan(s, baseMapping());
+    expect(plan.vendors[0].contactDetails).toBe("a@b.com | 0123 | 1 High St");
   });
 });
