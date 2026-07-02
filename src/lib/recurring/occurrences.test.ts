@@ -100,6 +100,14 @@ describe("recurringOccurrences — week/day", () => {
       ).map(iso),
     ).toEqual(["2025-01-01", "2025-01-04", "2025-01-07", "2025-01-10"]);
   });
+
+  it("daily rules reach asOf across multi-year spans (no silent truncation)", () => {
+    const dates = recurringOccurrences(
+      { ...base, intervalUnit: "DAY", intervalCount: 1, startDate: new Date("2021-01-01") },
+      new Date("2026-07-02"),
+    );
+    expect(iso(dates[dates.length - 1])).toBe("2026-07-02");
+  });
 });
 
 describe("upcomingOccurrences", () => {
@@ -111,5 +119,10 @@ describe("upcomingOccurrences", () => {
   it("ignores lastGeneratedDate (forward preview)", () => {
     const rule: OccurrenceRule = { ...base, intervalUnit: "MONTH", intervalCount: 1, dayOfMonth: 1, startDate: new Date("2025-01-01"), lastGeneratedDate: new Date("2025-06-01") };
     expect(upcomingOccurrences(rule, new Date("2024-12-31"), 2).map(iso)).toEqual(["2025-01-01", "2025-02-01"]);
+  });
+
+  it("returns the requested count even for coarse (yearly) schedules", () => {
+    const rule: OccurrenceRule = { ...base, intervalUnit: "YEAR", intervalCount: 1, dayOfMonth: 1, monthOfYear: 1, startDate: new Date("2025-01-01") };
+    expect(upcomingOccurrences(rule, new Date("2024-12-31"), 10)).toHaveLength(10);
   });
 });

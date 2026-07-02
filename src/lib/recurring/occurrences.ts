@@ -11,7 +11,21 @@ export interface OccurrenceRule {
   lastGeneratedDate: Date | null;
 }
 
-const MAX_ITER = 1200;
+const MAX_ITER_HARD = 100_000;
+
+/** Upper-bound iterations needed to reach asOf for this unit (over-estimates → never truncates). */
+function iterationBudget(rule: OccurrenceRule, start: Date, asOf: Date): number {
+  const days = Math.max(0, (asOf.getTime() - start.getTime()) / 86_400_000);
+  const count = Math.max(1, rule.intervalCount);
+  let periods: number;
+  switch (rule.intervalUnit) {
+    case "DAY": periods = days / count; break;
+    case "WEEK": periods = days / (7 * count); break;
+    case "MONTH": periods = days / (28 * count); break; // 28 = shortest month → safe over-estimate
+    case "YEAR": periods = days / (365 * count); break;
+  }
+  return Math.min(MAX_ITER_HARD, Math.ceil(periods) + 8);
+}
 
 function dateOnly(d: Date): Date {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
@@ -32,9 +46,10 @@ function dateOn(year: number, month: number, day: number): Date {
  * Occurrence dates from startDate up to and including asOf, honouring endDate
  * and skipping anything on/before lastGeneratedDate.
  */
-export function recurringOccurrences(rule: OccurrenceRule, asOf: Date, maxIter = MAX_ITER): Date[] {
+export function recurringOccurrences(rule: OccurrenceRule, asOf: Date, maxIter?: number): Date[] {
   const out: Date[] = [];
   const start = dateOnly(rule.startDate);
+  const cap = maxIter ?? iterationBudget(rule, start, asOf);
   const emit = (occ: Date): "stop" | "cont" => {
     if (occ > asOf) return "stop";
     if (rule.endDate && occ > rule.endDate) return "stop";
@@ -54,7 +69,7 @@ export function recurringOccurrences(rule: OccurrenceRule, asOf: Date, maxIter =
       const delta = (target - weekdayMon0(occ) + 7) % 7;
       occ.setUTCDate(occ.getUTCDate() + delta);
     }
-    for (let i = 0; i < maxIter; i++) {
+    for (let i = 0; i < cap; i++) {
       if (emit(occ) === "stop") break;
       const next = new Date(occ);
       next.setUTCDate(next.getUTCDate() + stepDays);
@@ -71,7 +86,7 @@ export function recurringOccurrences(rule: OccurrenceRule, asOf: Date, maxIter =
     rule.intervalUnit === "YEAR" && rule.monthOfYear != null
       ? rule.monthOfYear - 1
       : rule.startDate.getUTCMonth();
-  for (let i = 0; i < maxIter; i++) {
+  for (let i = 0; i < cap; i++) {
     const occ = dateOn(year, month, day);
     if (emit(occ) === "stop") break;
     month += stepMonths;
@@ -86,9 +101,14 @@ export function recurringOccurrences(rule: OccurrenceRule, asOf: Date, maxIter =
  * honours endDate). Used for "next due" and the form's live preview.
  */
 export function upcomingOccurrences(rule: OccurrenceRule, after: Date, count: number): Date[] {
-  const horizon = new Date(after);
-  horizon.setUTCFullYear(horizon.getUTCFullYear() + 5);
-  const all = recurringOccurrences({ ...rule, lastGeneratedDate: null }, horizon, 5000);
+  const c = Math.max(1, rule.intervalCount);
+  const approxStepDays =
+    rule.intervalUnit === "DAY" ? c
+    : rule.intervalUnit === "WEEK" ? 7 * c
+    : rule.intervalUnit === "MONTH" ? 31 * c
+    : 366 * c;
+  const horizon = new Date(after.getTime() + (count + 2) * approxStepDays * 86_400_000);
+  const all = recurringOccurrences({ ...rule, lastGeneratedDate: null }, horizon);
   const res: Date[] = [];
   for (const d of all) {
     if (d > after) {
