@@ -51,6 +51,7 @@ model Property {
   address         String?
   ownershipType   OwnershipType @default(personal)
   acquisitionDate DateTime?
+  roundTripMiles  Int?
   transactions    Transaction[]
   recurringRules  RecurringRule[]
   createdAt       DateTime      @default(now())
@@ -93,6 +94,7 @@ model Transaction {
   vendorId     String?
   vendor       Vendor?      @relation(fields: [vendorId], references: [id])
   description  String?
+  miles        Int?
   recurringId  String?
   recurring    RecurringRule? @relation(fields: [recurringId], references: [id])
   source       TxnSource    @default(manual)
