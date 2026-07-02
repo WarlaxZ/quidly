@@ -163,11 +163,17 @@ function mapFrequency(freq: string, interval: number): RecurringRulePayload["fre
 
 /**
  * Build Quidly recurring rules from Akaunting recurring definitions.
- * Akaunting churns recurring records (soft-deletes + recreates), so we dedupe by
- * (type, category, contact) keeping the latest start, then keep only recurrences whose
- * latest start is within RECURRING_ACTIVE_MONTHS of the newest transaction (i.e. still active).
- * lastGeneratedDate is set to the newest imported transaction date so generation never
- * backfills already-imported history.
+ *
+ * Akaunting churns recurring records: on each cycle it soft-deletes the record and its
+ * template transaction and recreates them, so `deleted_at` is set on essentially ALL rows
+ * and `status` stays "active" throughout — neither is a reliable "is this still running?"
+ * signal. We therefore dedupe by (type, category, contact) and treat a recurrence as active
+ * only if its latest start is within RECURRING_ACTIVE_MONTHS of the newest transaction.
+ * Recurring import is best-effort — the user should review the /recurring page before generating.
+ *
+ * Validity (currency, frequency, category) is checked BEFORE dedupe so a newer-but-invalid
+ * record cannot mask an older-but-valid one for the same key. lastGeneratedDate is set to the
+ * newest imported transaction date so generation never backfills already-imported history.
  */
 export function buildRecurringPlan(snapshot: SourceSnapshot, mapping: Mapping): RecurringPlan {
   const recurring: RecurringRulePayload[] = [];
@@ -181,54 +187,77 @@ export function buildRecurringPlan(snapshot: SourceSnapshot, mapping: Mapping): 
   );
   const contactIds = new Set(snapshot.contacts.map((c) => c.id));
 
-  // newest transaction date = the "as of" reference for recency + lastGeneratedDate.
+  // "as of" reference = newest imported transaction date (deterministic; drives recency + lastGeneratedDate)
   const txnDates = snapshot.transactions.map((t) => new Date(t.paidAt).getTime());
-  const asOfMs = txnDates.length ? Math.max(...txnDates) : new Date(src[0].startedAt).getTime();
+  const asOfMs = txnDates.length
+    ? Math.max(...txnDates)
+    : Math.max(...src.map((r) => new Date(r.startedAt).getTime()));
   const asOf = new Date(asOfMs);
   const cutoff = new Date(asOf);
   cutoff.setMonth(cutoff.getMonth() - RECURRING_ACTIVE_MONTHS);
 
-  // dedupe by (type, categoryId, contactId), keeping the latest startedAt
-  const latest = new Map<string, SourceRecurring>();
-  for (const r of src) {
-    const key = `${r.type}|${r.categoryId ?? "?"}|${r.contactId ?? "?"}`;
-    const prev = latest.get(key);
-    if (!prev || new Date(r.startedAt) > new Date(prev.startedAt)) latest.set(key, r);
-  }
+  const keyOf = (r: SourceRecurring) => `${r.type}|${r.categoryId ?? "?"}|${r.contactId ?? "?"}`;
 
-  for (const r of latest.values()) {
-    if (new Date(r.startedAt) < cutoff) {
-      skipped.push({ id: r.id, reason: `discontinued (last started ${r.startedAt.slice(0, 10)}, older than ${RECURRING_ACTIVE_MONTHS} months)` });
-      continue;
-    }
+  // 1) keep only importable records; remember a skip reason per key that has no importable record
+  interface Candidate { r: SourceRecurring; freq: RecurringRulePayload["frequency"]; target: QuidlyCategoryName }
+  const importable: Candidate[] = [];
+  const importableKeys = new Set<string>();
+  const invalidByKey = new Map<string, SkippedRecurring>();
+  for (const r of src) {
+    const key = keyOf(r);
     if (r.currencyCode.toUpperCase() !== assume.toUpperCase()) {
-      skipped.push({ id: r.id, reason: `non-GBP currency ${r.currencyCode}` });
+      if (!invalidByKey.has(key)) invalidByKey.set(key, { id: r.id, reason: `non-GBP currency ${r.currencyCode}` });
       continue;
     }
     const freq = mapFrequency(r.frequency, r.interval);
     if (!freq) {
-      skipped.push({ id: r.id, reason: `unsupported frequency ${r.frequency}/interval ${r.interval}` });
+      if (!invalidByKey.has(key)) invalidByKey.set(key, { id: r.id, reason: `unsupported frequency ${r.frequency}/interval ${r.interval}` });
       continue;
     }
     const target = r.categoryId != null ? targetByCategoryId.get(r.categoryId) : null;
     if (!target) {
-      skipped.push({ id: r.id, reason: `no category target for category id ${r.categoryId}` });
+      if (!invalidByKey.has(key)) invalidByKey.set(key, { id: r.id, reason: `no category target for category id ${r.categoryId}` });
+      continue;
+    }
+    importable.push({ r, freq, target });
+    importableKeys.add(key);
+  }
+
+  // 2) dedupe importable to the latest startedAt per key
+  const latest = new Map<string, Candidate>();
+  for (const c of importable) {
+    const key = keyOf(c.r);
+    const prev = latest.get(key);
+    if (!prev || new Date(c.r.startedAt) > new Date(prev.r.startedAt)) latest.set(key, c);
+  }
+
+  // 3) recency filter + build payloads
+  for (const c of latest.values()) {
+    const { r, freq, target } = c;
+    if (new Date(r.startedAt) < cutoff) {
+      skipped.push({ id: r.id, reason: `discontinued (last started ${r.startedAt.slice(0, 10)}, older than ${RECURRING_ACTIVE_MONTHS} months)` });
       continue;
     }
     const hasContact = r.contactId != null && contactIds.has(r.contactId);
     const day = new Date(r.startedAt).getUTCDate();
     recurring.push({
       externalRef: `akaunting:recurring:${r.id}`,
-      akauntingCompanyId: snapshot.companies[0]?.id ?? 1, // recurring rows are company-scoped; single-company installs → the one property
+      akauntingCompanyId: snapshot.companies[0]?.id ?? 1,
       amountPence: decimalStringToPence(r.amount),
       direction: r.type === "income" ? "in" : "out",
       categoryName: target,
       vendorExternalRef: hasContact ? `akaunting:contact:${r.contactId}` : null,
       frequency: freq,
-      dayOfMonth: Math.min(day, 28),
+      dayOfMonth: Math.min(Math.max(day, 1), 31), // Quidly's dateOn() clamps to each month's real last day
       startDate: r.startedAt,
       lastGeneratedDate: asOf.toISOString(),
     });
   }
+
+  // 4) report keys that had no importable record at all
+  for (const [key, sk] of invalidByKey) {
+    if (!importableKeys.has(key)) skipped.push(sk);
+  }
+
   return { recurring, skipped };
 }

@@ -66,6 +66,8 @@ export function buildReport(snapshot: SourceSnapshot, mapping: Mapping): string 
       lines.push(`- ${r.direction === "in" ? "Income" : "Expense"} £${(r.amountPence / 100).toFixed(2)} ${r.frequency} (day ${r.dayOfMonth}) → ${r.categoryName}`);
     }
     lines.push("");
+    lines.push("_Recurring import is best-effort (Akaunting churns its recurring records) — review these on the /recurring page before clicking \"generate due\"._");
+    lines.push("");
   }
   if (recPlan.skipped.length > 0) {
     lines.push(`${recPlan.skipped.length} older/other recurring definition(s) skipped (superseded or unsupported).`, "");
