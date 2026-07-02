@@ -22,6 +22,8 @@ const categories: CategorySeed[] = [
   { name: "Legal, management, other professional fees", kind: "expense", sa105Box: "27", allowable: true },
   { name: "Costs of services provided, including wages", kind: "expense", sa105Box: "28", allowable: true },
   { name: "Other allowable property expenses", kind: "expense", sa105Box: "29", allowable: true },
+  { name: "Travel & mileage", kind: "expense", sa105Box: "29", allowable: true },
+  { name: "Use of home", kind: "expense", sa105Box: "29", allowable: true },
   { name: "Mortgage / loan interest", kind: "finance", sa105Box: "44", allowable: true },
   { name: "Capital improvements", kind: "capital", sa105Box: null, allowable: false },
 ];

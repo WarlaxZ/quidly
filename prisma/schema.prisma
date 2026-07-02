@@ -179,3 +179,12 @@ model CompanyLedgerEntry {
 
   @@index([companyId, date])
 }
+
+model DeductionDismissal {
+  id        String   @id @default(cuid())
+  taxYear   String
+  itemKey   String
+  createdAt DateTime @default(now())
+
+  @@unique([taxYear, itemKey])
+}
