@@ -84,11 +84,6 @@ export function validateMapping(snapshot: SourceSnapshot, mapping: Mapping): str
   return errors;
 }
 
-function contactDetails(c: { email: string | null; phone: string | null; address: string | null }): string | null {
-  const parts = [c.email, c.phone, c.address].filter((p): p is string => !!p && p.trim() !== "");
-  return parts.length ? parts.join(" | ") : null;
-}
-
 /**
  * Build the migration plan from a snapshot + mapping.
  *
@@ -147,7 +142,9 @@ export function buildPlan(snapshot: SourceSnapshot, mapping: Mapping): Migration
     .map((c) => ({
       externalRef: `akaunting:contact:${c.id}`,
       name: c.name,
-      contactDetails: contactDetails(c),
+      email: c.email,
+      phone: c.phone,
+      address: c.address,
     }));
 
   return { vendors, transactions, skipped };

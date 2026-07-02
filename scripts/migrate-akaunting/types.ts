@@ -107,7 +107,9 @@ export interface Mapping {
 export interface VendorPayload {
   externalRef: string; // "akaunting:contact:<id>"
   name: string;
-  contactDetails: string | null;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
 }
 
 export interface TransactionPayload {
