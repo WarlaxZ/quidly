@@ -36,6 +36,6 @@ export function listPersonalProperties() {
   return prisma.property.findMany({
     where: { ownershipType: "personal" },
     orderBy: { createdAt: "asc" },
-    select: { id: true, name: true },
+    select: { id: true, name: true, roundTripMiles: true },
   });
 }
