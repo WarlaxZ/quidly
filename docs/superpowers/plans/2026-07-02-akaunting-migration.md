@@ -840,13 +840,14 @@ import { buildPlan, validateMapping } from "./transform";
 
 /** Known Akaunting feature tables Quidly has no home for, with an explanation. */
 const GAP_EXPLANATIONS: Record<string, string> = {
-  documents: "Invoices/bills — Quidly tracks money movements, not open receivables/payables.",
-  document_items: "Invoice/bill line items — no equivalent in Quidly.",
+  documents: "Invoices/bills (Akaunting 3.x) — Quidly tracks money movements, not open receivables/payables.",
+  invoices: "Invoices (Akaunting 2.x) — Quidly tracks received money, not open receivables.",
+  bills: "Bills (Akaunting 2.x) — Quidly tracks paid money, not open payables.",
   items: "Product/service catalogue — no equivalent in Quidly.",
   accounts: "Bank accounts / reconciliation — Quidly has no multi-account or bank-rec model.",
   transfers: "Inter-account transfers — no multi-account model in Quidly.",
   taxes: "Tax/VAT rates — Quidly computes UK property tax from categories, not stored rates.",
-  budgets: "Budgets — no equivalent in Quidly.",
+  recurring: "Recurring templates — Quidly has its own recurring rules; Akaunting's are not imported.",
   reconciliations: "Bank reconciliations — no equivalent in Quidly.",
 };
 
@@ -932,21 +933,24 @@ git commit -m "feat(migrate): human report with category table and gap analysis"
 - Create: `scripts/migrate-akaunting/mariadb.ts`
 - Create: `scripts/migrate-akaunting/read.ts`
 
-- [ ] **Step 1: Confirm Docker and introspect the dump's schema**
+- [ ] **Step 1: Confirm Docker (schema already introspected)**
 
-Run (starts a throwaway MariaDB, loads the dump, lists tables & key columns):
+The controller already introspected this dump; the confirmed schema is recorded at the end of this task and baked into the Step 3 reader (prefix `akk_`, company name in `akk_settings`, media path `directory/filename.extension`). The reader detects the prefix dynamically, so it also works on installs with no prefix.
+
+Confirm Docker is available:
+
+Run: `docker --version`
+Expected: prints a Docker version. If not, install/start Docker before continuing (the pure tasks 1–7, 10 don't need it, but the reader does).
+
+Optional re-verification (starts MariaDB, loads dump, lists tables — note the `akk_` prefix):
 
 ```bash
-docker run -d --rm --name quidly-akaunting -e MARIADB_ROOT_PASSWORD=root -e MARIADB_DATABASE=akaunting mariadb:11
+docker rm -f quidly-akaunting 2>/dev/null; docker run -d --name quidly-akaunting -e MARIADB_ROOT_PASSWORD=root -e MARIADB_DATABASE=akaunting mariadb:11
 until docker exec quidly-akaunting mariadb -uroot -proot -e "SELECT 1" >/dev/null 2>&1; do sleep 1; done
 docker exec -i quidly-akaunting mariadb -uroot -proot akaunting < ./akaunting-migration/dump.sql
-docker exec quidly-akaunting mariadb -uroot -proot akaunting -e "SHOW TABLES;"
-docker exec quidly-akaunting mariadb -uroot -proot akaunting -e "SHOW COLUMNS FROM transactions; SHOW COLUMNS FROM contacts; SHOW COLUMNS FROM categories;"
-docker exec quidly-akaunting mariadb -uroot -proot akaunting -e "SELECT table_name, table_rows FROM information_schema.tables WHERE table_schema='akaunting';"
-docker stop quidly-akaunting
+docker exec quidly-akaunting mariadb -uroot -proot akaunting -e "SHOW TABLES; SHOW COLUMNS FROM akk_transactions;"
+docker rm -f quidly-akaunting
 ```
-
-Expected: a table list and column lists. **Record the actual column names** for `transactions` (esp. `type`, `paid_at`, `amount`, `currency_code`, `category_id`, `contact_id`, `description`, `company_id`, `deleted_at`), `contacts` (`type`, `name`, `email`, `phone`, `address`), `categories` (`type`, `name`), how the **company name** is stored (often `settings` key `company.name`, or a `companies`/`company` table), and the **attachment** tables (`media` + `mediables`, tag `attachment`). Adjust the SQL in Step 3 to match if names differ.
 
 - [ ] **Step 2: Implement mariadb.ts (Docker lifecycle)**
 
@@ -1020,42 +1024,56 @@ import type {
   SourceTransaction, SourceAttachment,
 } from "./types";
 
-const FEATURE_TABLES = ["documents", "document_items", "items", "accounts", "transfers", "taxes", "budgets", "reconciliations"];
+/** Logical (unprefixed) Akaunting feature tables Quidly has no home for. */
+const FEATURE_TABLES = ["documents", "invoices", "bills", "items", "accounts", "transfers", "taxes", "recurring", "reconciliations"];
 
 export async function readSnapshot(mysqlConfig: object): Promise<SourceSnapshot> {
   const conn = await mysql.createConnection(mysqlConfig as mysql.ConnectionOptions);
   try {
-    const [existingRows] = await conn.query(
-      "SELECT table_name AS t, table_rows AS n FROM information_schema.tables WHERE table_schema = DATABASE()",
+    // All base tables in this schema.
+    const [tblRows] = await conn.query(
+      "SELECT table_name AS t FROM information_schema.tables WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'",
     );
-    const existing = new Map((existingRows as { t: string; n: number }[]).map((r) => [r.t, Number(r.n)]));
+    const tableNames = (tblRows as { t: string }[]).map((r) => r.t);
 
-    // Company name: prefer a companies/company table name column; else settings key company.name.
-    const companies: SourceCompany[] = [];
-    if (existing.has("companies")) {
-      const [rows] = await conn.query("SELECT id, COALESCE(name, CAST(id AS CHAR)) AS name FROM companies WHERE deleted_at IS NULL");
-      for (const r of rows as { id: number; name: string }[]) companies.push({ id: r.id, name: r.name });
-    }
-    if (companies.length && existing.has("settings")) {
-      const [rows] = await conn.query("SELECT company_id, value FROM settings WHERE `key` = 'company.name'");
+    // Akaunting's table prefix is configurable (e.g. "akk_" here, or "" ). Detect it
+    // from the transactions table so the reader works on any install.
+    const txnTable = tableNames.find((t) => t.endsWith("transactions"));
+    if (!txnTable) throw new Error("This dump has no `transactions` table — is it an Akaunting database?");
+    const prefix = txnTable.slice(0, txnTable.length - "transactions".length);
+    const T = (name: string) => `${prefix}${name}`;
+    const logical = new Set(tableNames.map((t) => (t.startsWith(prefix) ? t.slice(prefix.length) : t)));
+    const need = (name: string) => {
+      if (!logical.has(name)) throw new Error(`Expected Akaunting table "${prefix}${name}" is missing — unsupported Akaunting version?`);
+    };
+    need("transactions"); need("contacts"); need("categories");
+
+    // Companies: the companies table has no name column — the name lives in settings key "company.name".
+    const [coRows] = await conn.query(`SELECT id FROM \`${T("companies")}\` WHERE deleted_at IS NULL`);
+    const companies: SourceCompany[] = (coRows as { id: number }[]).map((r) => ({ id: r.id, name: String(r.id) }));
+    if (logical.has("settings")) {
+      const [rows] = await conn.query(
+        `SELECT company_id, value FROM \`${T("settings")}\` WHERE \`key\` = 'company.name'`,
+      );
       const byId = new Map((rows as { company_id: number; value: string }[]).map((r) => [r.company_id, r.value]));
       for (const c of companies) c.name = byId.get(c.id) ?? c.name;
     }
 
     const [contactRows] = await conn.query(
-      "SELECT id, name, type, email, phone, address FROM contacts WHERE deleted_at IS NULL",
+      `SELECT id, name, type, email, phone, address FROM \`${T("contacts")}\` WHERE deleted_at IS NULL`,
     );
     const contacts: SourceContact[] = (contactRows as any[]).map((r) => ({
       id: r.id, name: r.name, type: r.type,
       email: r.email ?? null, phone: r.phone ?? null, address: r.address ?? null,
     }));
 
-    const [catRows] = await conn.query("SELECT id, name, type FROM categories WHERE deleted_at IS NULL");
+    const [catRows] = await conn.query(`SELECT id, name, type FROM \`${T("categories")}\` WHERE deleted_at IS NULL`);
     const categories: SourceCategory[] = (catRows as any[]).map((r) => ({ id: r.id, name: r.name, type: r.type }));
 
+    // Only real income/expense transactions (excludes '*-transfer' pseudo-types).
     const [txnRows] = await conn.query(
-      "SELECT id, company_id, type, category_id, contact_id, paid_at, amount, currency_code, description " +
-        "FROM transactions WHERE deleted_at IS NULL AND type IN ('income','expense')",
+      `SELECT id, company_id, type, category_id, contact_id, paid_at, amount, currency_code, description ` +
+        `FROM \`${T("transactions")}\` WHERE deleted_at IS NULL AND type IN ('income','expense')`,
     );
     const transactions: SourceTransaction[] = (txnRows as any[]).map((r) => ({
       id: r.id, companyId: r.company_id, type: r.type,
@@ -1064,25 +1082,33 @@ export async function readSnapshot(mysqlConfig: object): Promise<SourceSnapshot>
       amount: String(r.amount), currencyCode: r.currency_code, description: r.description ?? null,
     }));
 
-    // Attachments via media + mediables (tag 'attachment', mediable a Transaction).
+    // Attachments via media + mediables (mediable a Transaction). laravel-mediable stores
+    // the file at `<disk>/<directory>/<filename>.<extension>`.
     let attachments: SourceAttachment[] = [];
-    if (existing.has("media") && existing.has("mediables")) {
+    if (logical.has("media") && logical.has("mediables")) {
       const [attRows] = await conn.query(
-        "SELECT mb.mediable_id AS transactionId, m.basename AS filename, m.directory AS directory " +
-          "FROM mediables mb JOIN media m ON m.id = mb.media_id " +
-          "WHERE mb.mediable_type LIKE '%Transaction%'",
+        `SELECT mb.mediable_id AS transactionId, m.filename AS filename, m.extension AS extension, m.directory AS directory ` +
+          `FROM \`${T("mediables")}\` mb JOIN \`${T("media")}\` m ON m.id = mb.media_id ` +
+          `WHERE mb.mediable_type LIKE '%Transaction%'`,
       );
       attachments = (attRows as any[]).map((r) => ({
-        transactionId: r.transactionId, filename: r.filename, directory: r.directory ?? null,
+        transactionId: r.transactionId,
+        filename: r.extension ? `${r.filename}.${r.extension}` : r.filename,
+        directory: r.directory ?? null,
       }));
     }
 
+    // Gap report: actual COUNT(*) for feature tables that exist (table_rows is only an estimate in InnoDB).
     const otherTableCounts: Record<string, number> = {};
-    for (const t of FEATURE_TABLES) if (existing.has(t)) otherTableCounts[t] = existing.get(t) ?? 0;
+    for (const name of FEATURE_TABLES) {
+      if (!logical.has(name)) continue;
+      const [cntRows] = await conn.query(`SELECT COUNT(*) AS n FROM \`${T(name)}\``);
+      otherTableCounts[name] = Number((cntRows as { n: number }[])[0]?.n ?? 0);
+    }
 
     let akauntingVersion: string | null = null;
-    if (existing.has("settings")) {
-      const [vRows] = await conn.query("SELECT value FROM settings WHERE `key` = 'app.version' LIMIT 1");
+    if (logical.has("settings")) {
+      const [vRows] = await conn.query(`SELECT value FROM \`${T("settings")}\` WHERE \`key\` = 'app.version' LIMIT 1`);
       akauntingVersion = (vRows as any[])[0]?.value ?? null;
     }
 
@@ -1092,6 +1118,8 @@ export async function readSnapshot(mysqlConfig: object): Promise<SourceSnapshot>
   }
 }
 ```
+
+**This dump's real schema (confirmed by introspection):** prefix `akk_`; `akk_companies` has no `name` (name is in `akk_settings` key `company.name` = "Ash Rentals"); populated `akk_transactions`/`akk_contacts`/`akk_categories`/`akk_accounts`; empty `akk_documents`/`akk_invoices`/`akk_bills`/`akk_items`. Transaction cols: `id, company_id, type, paid_at, amount, currency_code, currency_rate, category_id, contact_id, description, deleted_at`.
 
 - [ ] **Step 4: Smoke-test the reader against the real dump**
 
