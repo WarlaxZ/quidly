@@ -1,9 +1,10 @@
 import { listVendors } from "../../../lib/data/vendors";
-import { addVendorAction, deleteVendorAction } from "./actions";
+import { deleteVendorAction } from "./actions";
 import { PageHeader } from "../_ui/PageHeader";
 import { Banner } from "../_ui/Banner";
 import { EmptyState } from "../_ui/EmptyState";
 import { ConfirmSubmit } from "../_ui/ConfirmSubmit";
+import { NewVendorButton } from "../_ui/NewVendorButton";
 
 export default async function VendorsPage({
   searchParams,
@@ -16,33 +17,13 @@ export default async function VendorsPage({
   return (
     <div className="mx-auto max-w-3xl space-y-8">
       <div className="reveal" style={{ animationDelay: "0ms" }}>
-        <PageHeader title="Vendors" />
+        <PageHeader title="Vendors">
+          <NewVendorButton />
+        </PageHeader>
       </div>
 
       {error && <Banner variant="error">{error}</Banner>}
       {ok && <Banner variant="success">{ok}</Banner>}
-
-      {/* Add-vendor form */}
-      <section className="reveal" style={{ animationDelay: "60ms" }}>
-        <form action={addVendorAction} className="card p-5">
-          <div className="mb-4 text-[0.7rem] font-bold uppercase tracking-[0.1em] text-faint">Add vendor</div>
-          <div className="flex flex-wrap items-end gap-3">
-            <label className="flex-1 min-w-[12rem]">
-              <span className="label">Name</span>
-              <input name="name" placeholder="e.g. Plumber Ltd" required className="field" />
-            </label>
-            <label className="flex-1 min-w-[12rem]">
-              <span className="label">Contact (optional)</span>
-              <input name="contactDetails" placeholder="Email or phone" className="field" />
-            </label>
-            <label className="flex-1 min-w-[12rem]">
-              <span className="label">Notes (optional)</span>
-              <input name="notes" placeholder="Any notes" className="field" />
-            </label>
-            <button type="submit" className="btn btn-primary">Add</button>
-          </div>
-        </form>
-      </section>
 
       {/* Vendors list */}
       <section className="reveal" style={{ animationDelay: "120ms" }}>
