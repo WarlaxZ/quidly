@@ -94,11 +94,14 @@ export async function logMileageAction(formData: FormData) {
 
   const purpose = String(formData.get("purpose") ?? "").trim() || "Trip to property";
 
-  const category = await prisma.category.findUnique({ where: { name: "Travel & mileage" } });
-  if (!category) return back('Category "Travel & mileage" not found — run the seed.');
+  const item = DEDUCTION_CATALOG.find((i) => i.key === "mileage");
+  if (!item) return back("Mileage item missing from catalog.");
+  const category = await prisma.category.findUnique({ where: { name: item.categoryName } });
+  if (!category) return back(`Category "${item.categoryName}" not found — run the seed.`);
 
   const before = await cumulativeMilesForTaxYear(taxYear);
   const amountPence = mileageClaimPence(miles, before, taxYear);
+  if (amountPence <= 0) return back("Could not compute a claimable amount — check your trip details.");
 
   await createTransaction({
     propertyId: property.id,
