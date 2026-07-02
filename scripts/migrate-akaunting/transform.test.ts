@@ -105,6 +105,12 @@ describe("validateMapping", () => {
     m.properties = []; // no property decisions at all
     expect(validateMapping(s, m)).toEqual([]);
   });
+  it("flags an expense category mapped to an income Quidly category", () => {
+    const m = baseMapping();
+    m.categories[0].target = "Rent received"; // Repairs (expense) → income box
+    const errors = validateMapping(baseSnapshot(), m);
+    expect(errors.some((e) => e.includes("Repairs") && e.includes("income"))).toBe(true);
+  });
 });
 
 describe("buildPlan", () => {

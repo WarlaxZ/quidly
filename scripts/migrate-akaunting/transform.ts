@@ -3,6 +3,9 @@ import type {
   MigrationPlan, TransactionPayload, VendorPayload, SkippedTransaction, QuidlyCategoryName,
 } from "./types";
 
+/** The two income Quidly categories; everything else is expense/finance/capital. */
+const QUIDLY_INCOME_NAMES = new Set(["Rent received", "Other property income"]);
+
 /**
  * Convert an Akaunting decimal amount string (up to 4dp) to integer pence,
  * without ever going through a float. Rounds half-up at the pence boundary
@@ -58,6 +61,20 @@ export function validateMapping(snapshot: SourceSnapshot, mapping: Mapping): str
     if (!decision || decision.target == null) {
       const name = snapshot.categories.find((c) => c.id === categoryId)?.name ?? String(categoryId);
       errors.push(`Category "${name}" (id ${categoryId}) is used by transactions but has no target — set its "target" in mapping.json.`);
+    }
+  }
+
+  // (c) a category used by GBP transactions must map to a target of the matching kind:
+  // an Akaunting "income" category must map to an income Quidly category, and vice versa.
+  for (const categoryId of gbpCategoryIds) {
+    const decision = decisionById.get(categoryId);
+    if (!decision || decision.target == null) continue; // already reported by rule (b)
+    const targetIsIncome = QUIDLY_INCOME_NAMES.has(decision.target);
+    const sourceIsIncome = decision.akauntingType === "income";
+    if (sourceIsIncome !== targetIsIncome) {
+      errors.push(
+        `Category "${decision.akauntingName}" is an Akaunting ${decision.akauntingType} category but is mapped to ${targetIsIncome ? "an income" : "a non-income"} Quidly category "${decision.target}" — fix the target in mapping.json.`,
+      );
     }
   }
 

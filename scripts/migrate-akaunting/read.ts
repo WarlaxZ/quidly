@@ -7,8 +7,22 @@ import type {
 /** Logical (unprefixed) Akaunting feature tables Quidly has no home for. */
 const FEATURE_TABLES = ["documents", "invoices", "bills", "items", "accounts", "transfers", "taxes", "recurring", "reconciliations"];
 
+/**
+ * Akaunting stores paid_at as a naive local DATETIME. We read it as a string
+ * (dateStrings: true) and treat the wall-clock value as UTC, so the calendar date
+ * is preserved regardless of the Node process timezone — critical because Quidly
+ * bins transactions into UK tax years by UTC date (6 April boundary).
+ */
+function paidAtToIso(paidAt: unknown): string {
+  const s = String(paidAt).trim();               // e.g. "2025-04-06 00:00:00"
+  const iso = `${s.replace(" ", "T")}Z`;         // "2025-04-06T00:00:00Z"
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) throw new Error(`Unparseable paid_at: ${s}`);
+  return d.toISOString();
+}
+
 export async function readSnapshot(mysqlConfig: object): Promise<SourceSnapshot> {
-  const conn = await mysql.createConnection(mysqlConfig as mysql.ConnectionOptions);
+  const conn = await mysql.createConnection({ ...(mysqlConfig as mysql.ConnectionOptions), dateStrings: true });
   try {
     // All base tables in this schema.
     const [tblRows] = await conn.query(
@@ -61,7 +75,7 @@ export async function readSnapshot(mysqlConfig: object): Promise<SourceSnapshot>
     const transactions: SourceTransaction[] = (txnRows as any[]).map((r) => ({
       id: r.id, companyId: r.company_id, type: r.type,
       categoryId: r.category_id ?? null, contactId: r.contact_id ?? null,
-      paidAt: new Date(r.paid_at).toISOString(),
+      paidAt: paidAtToIso(r.paid_at),
       amount: String(r.amount), currencyCode: r.currency_code, description: r.description ?? null,
     }));
 
