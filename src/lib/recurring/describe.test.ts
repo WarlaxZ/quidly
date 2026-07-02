@@ -25,6 +25,21 @@ describe("describeSchedule", () => {
   it("yearly with month + day", () => {
     expect(describeSchedule({ ...base, intervalUnit: "YEAR", intervalCount: 1, dayOfMonth: 6, monthOfYear: 4 })).toBe("Yearly on 6 April");
   });
+  it("ordinals handle teens and century boundaries", () => {
+    expect(describeSchedule({ ...base, intervalUnit: "MONTH", intervalCount: 1, dayOfMonth: 2 })).toBe("Monthly on the 2nd");
+    expect(describeSchedule({ ...base, intervalUnit: "MONTH", intervalCount: 1, dayOfMonth: 3 })).toBe("Monthly on the 3rd");
+    expect(describeSchedule({ ...base, intervalUnit: "MONTH", intervalCount: 1, dayOfMonth: 11 })).toBe("Monthly on the 11th");
+    expect(describeSchedule({ ...base, intervalUnit: "MONTH", intervalCount: 1, dayOfMonth: 21 })).toBe("Monthly on the 21st");
+    expect(describeSchedule({ ...base, intervalUnit: "MONTH", intervalCount: 1, dayOfMonth: 23 })).toBe("Monthly on the 23rd");
+  });
+
+  it("omits the anchor when day fields are null and falls back for yearly", () => {
+    expect(describeSchedule({ ...base, intervalUnit: "WEEK", intervalCount: 1, dayOfWeek: null })).toBe("Weekly");
+    expect(describeSchedule({ ...base, intervalUnit: "WEEK", intervalCount: 2, dayOfWeek: null })).toBe("Fortnightly");
+    expect(describeSchedule({ ...base, intervalUnit: "MONTH", intervalCount: 1, dayOfMonth: null })).toBe("Monthly");
+    // yearly with both null falls back to startDate (2025-05-10 → 10 May)
+    expect(describeSchedule({ ...base, intervalUnit: "YEAR", intervalCount: 1, dayOfMonth: null, monthOfYear: null, startDate: new Date("2025-05-10") })).toBe("Yearly on 10 May");
+  });
 });
 
 describe("nextDueDate", () => {

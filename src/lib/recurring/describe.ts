@@ -35,7 +35,8 @@ export function describeSchedule(rule: OccurrenceRule): string {
     }
     case "YEAR": {
       const day = rule.dayOfMonth ?? rule.startDate.getUTCDate();
-      const monthIdx = (rule.monthOfYear ?? rule.startDate.getUTCMonth() + 1) - 1;
+      const rawMonth = rule.monthOfYear ?? rule.startDate.getUTCMonth() + 1;
+      const monthIdx = Math.min(11, Math.max(0, rawMonth - 1));
       const label = `${day} ${MONTHS[monthIdx]}`;
       return n === 1 ? `Yearly on ${label}` : `Every ${n} years on ${label}`;
     }
