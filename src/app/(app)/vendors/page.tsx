@@ -46,7 +46,15 @@ export default async function VendorsPage({
                 {vendors.map((v) => (
                   <tr key={v.id}>
                     <td className="font-medium text-ink">{v.name}</td>
-                    <td className="text-muted">{v.contactDetails ?? ""}</td>
+                    <td className="text-muted">
+                      {(v.email || v.phone || v.address) && (
+                        <div className="flex flex-col leading-tight">
+                          {v.email && <span>{v.email}</span>}
+                          {v.phone && <span>{v.phone}</span>}
+                          {v.address && <span>{v.address}</span>}
+                        </div>
+                      )}
+                    </td>
                     <td className="text-right">
                       <div className="flex items-center justify-end gap-3">
                         <a

@@ -23,7 +23,9 @@ export function CreateVendorModal({
     try {
       const result = await createVendorAction({
         name: String(fd.get("name") ?? ""),
-        contactDetails: String(fd.get("contactDetails") ?? ""),
+        email: String(fd.get("email") ?? ""),
+        phone: String(fd.get("phone") ?? ""),
+        address: String(fd.get("address") ?? ""),
         notes: String(fd.get("notes") ?? ""),
       });
       if (result.ok) {
@@ -48,8 +50,16 @@ export function CreateVendorModal({
           <input name="name" placeholder="e.g. Plumber Ltd" required autoFocus className="field" />
         </label>
         <label className="block">
-          <span className="label">Contact (optional)</span>
-          <input name="contactDetails" placeholder="Email or phone" className="field" />
+          <span className="label">Email (optional)</span>
+          <input name="email" type="email" placeholder="name@example.com" className="field" />
+        </label>
+        <label className="block">
+          <span className="label">Phone (optional)</span>
+          <input name="phone" placeholder="07123 456789" className="field" />
+        </label>
+        <label className="block">
+          <span className="label">Address (optional)</span>
+          <input name="address" placeholder="1 High St" className="field" />
         </label>
         <label className="block">
           <span className="label">Notes (optional)</span>

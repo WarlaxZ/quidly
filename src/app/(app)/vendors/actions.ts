@@ -6,7 +6,9 @@ import { requireSession } from "../../../lib/auth/session";
 
 export async function createVendorAction(input: {
   name: string;
-  contactDetails?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  address?: string | null;
   notes?: string | null;
 }): Promise<
   | { ok: true; vendor: { id: string; name: string } }
@@ -18,7 +20,9 @@ export async function createVendorAction(input: {
   try {
     const vendor = await createVendor({
       name,
-      contactDetails: String(input.contactDetails ?? "").trim() || null,
+      email: String(input.email ?? "").trim() || null,
+      phone: String(input.phone ?? "").trim() || null,
+      address: String(input.address ?? "").trim() || null,
       notes: String(input.notes ?? "").trim() || null,
     });
     revalidatePath("/vendors");

@@ -3,7 +3,9 @@ import { prisma } from "../db";
 
 export interface VendorInput {
   name: string;
-  contactDetails?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  address?: string | null;
   notes?: string | null;
   defaultCategoryId?: string | null;
 }
