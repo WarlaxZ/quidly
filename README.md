@@ -5,7 +5,7 @@
 ![Licence: AGPL-3.0](https://img.shields.io/badge/licence-AGPL--3.0-1f3d30)
 ![Next.js 16](https://img.shields.io/badge/Next.js-16-000)
 ![SQLite](https://img.shields.io/badge/db-SQLite-044a64)
-![Tests](https://img.shields.io/badge/tests-198%20passing-3a7d54)
+![Tests](https://img.shields.io/badge/tests-261%20passing-3a7d54)
 
 Quidly is a self-hosted bookkeeping app built for UK landlords: track rent and expenses across your properties, then turn them into an SA105 you can file. Run it on your own box, keep your own data.
 
