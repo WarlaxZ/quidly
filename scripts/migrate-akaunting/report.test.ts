@@ -54,4 +54,12 @@ describe("buildReport", () => {
     expect(md).toContain("items");
     expect(md).not.toContain("taxes"); // 0 rows → not a gap
   });
+  it("does not double-report unmapped-category transactions in the skipped section", () => {
+    const s = snapshot();
+    s.transactions[1].currencyCode = "GBP"; // txn 200 now GBP, still on unmapped category 9 (Misc)
+    const md2 = buildReport(s, mapping());
+    expect(md2).toMatch(/Blocking issues/i);
+    const skippedSection = md2.split("## Skipped transactions")[1] ?? "";
+    expect(skippedSection).not.toContain("200");
+  });
 });

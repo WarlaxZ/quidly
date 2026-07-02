@@ -1,6 +1,8 @@
 import type { SourceSnapshot, Mapping } from "./types";
 import { buildPlan, validateMapping } from "./transform";
 
+const escapeCell = (s: string): string => s.replace(/\|/g, "\\|");
+
 /** Known Akaunting feature tables Quidly has no home for, with an explanation. */
 const GAP_EXPLANATIONS: Record<string, string> = {
   documents: "Invoices/bills (Akaunting 3.x) — Quidly tracks money movements, not open receivables/payables.",
@@ -34,7 +36,7 @@ export function buildReport(snapshot: SourceSnapshot, mapping: Mapping): string 
   lines.push("|---|---|---|---|");
   for (const c of mapping.categories) {
     const target = c.target ?? "**NEEDS MAPPING (unmapped)**";
-    lines.push(`| ${c.akauntingName} | ${c.akauntingType} | ${c.count} | ${target} |`);
+    lines.push(`| ${escapeCell(c.akauntingName)} | ${escapeCell(c.akauntingType)} | ${c.count} | ${escapeCell(target)} |`);
   }
   lines.push("");
 
@@ -44,9 +46,13 @@ export function buildReport(snapshot: SourceSnapshot, mapping: Mapping): string 
     lines.push("");
   }
 
-  if (plan.skipped.length) {
+  // Skips the user cannot fix by editing mapping.json: non-GBP and no-category.
+  // "no category target" skips are transient (they import once the category is mapped)
+  // and are already surfaced under Blocking issues, so they are excluded here.
+  const permanentSkips = plan.skipped.filter((s) => !s.reason.startsWith("no category target"));
+  if (permanentSkips.length) {
     lines.push("## Skipped transactions (not imported)", "");
-    for (const s of plan.skipped) lines.push(`- Transaction ${s.id}: ${s.reason}`);
+    for (const s of permanentSkips) lines.push(`- Transaction ${s.id}: ${s.reason}`);
     lines.push("");
   }
 
@@ -69,5 +75,5 @@ export function buildReport(snapshot: SourceSnapshot, mapping: Mapping): string 
     lines.push("");
   }
 
-  return lines.join("\n");
+  return lines.join("\n") + "\n";
 }
