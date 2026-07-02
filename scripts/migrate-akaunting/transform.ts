@@ -69,12 +69,24 @@ function contactDetails(c: { email: string | null; phone: string | null; address
   return parts.length ? parts.join(" | ") : null;
 }
 
-/** Build the migration plan. Assumes validateMapping returned no errors. */
+/**
+ * Build the migration plan from a snapshot + mapping.
+ *
+ * Precondition: validateMapping(snapshot, mapping) returned no errors. buildPlan
+ * is defensive regardless — it silently skips transactions it cannot place:
+ *  - non-GBP transactions (reason "non-GBP currency <code>"),
+ *  - transactions whose category has no target, or no category at all
+ *    (reason "no category target ..." / "transaction has no category").
+ * A transaction whose contactId does not resolve to a contact in the snapshot
+ * (e.g. the contact was soft-deleted in Akaunting) is still imported, but with
+ * no vendor link, so the plan never references a vendor it won't create.
+ */
 export function buildPlan(snapshot: SourceSnapshot, mapping: Mapping): MigrationPlan {
   const assume = mapping.currency.assume;
   const targetByCategoryId = new Map<number, QuidlyCategoryName | null>(
     mapping.categories.map((c) => [c.akauntingId, c.target]),
   );
+  const contactIds = new Set(snapshot.contacts.map((c) => c.id));
 
   const transactions: TransactionPayload[] = [];
   const skipped: SkippedTransaction[] = [];
@@ -85,13 +97,18 @@ export function buildPlan(snapshot: SourceSnapshot, mapping: Mapping): Migration
       skipped.push({ id: t.id, reason: `non-GBP currency ${t.currencyCode}` });
       continue;
     }
-    const target = t.categoryId != null ? targetByCategoryId.get(t.categoryId) : null;
+    if (t.categoryId == null) {
+      skipped.push({ id: t.id, reason: "transaction has no category" });
+      continue;
+    }
+    const target = targetByCategoryId.get(t.categoryId);
     if (!target) {
       skipped.push({ id: t.id, reason: `no category target for category id ${t.categoryId}` });
       continue;
     }
-    const vendorExternalRef = t.contactId != null ? `akaunting:contact:${t.contactId}` : null;
-    if (t.contactId != null) usedContactIds.add(t.contactId);
+    // Only link a vendor we will actually create (contact present in the snapshot).
+    const hasContact = t.contactId != null && contactIds.has(t.contactId);
+    if (hasContact) usedContactIds.add(t.contactId as number);
     transactions.push({
       externalRef: `akaunting:transaction:${t.id}`,
       akauntingCompanyId: t.companyId,
@@ -99,13 +116,14 @@ export function buildPlan(snapshot: SourceSnapshot, mapping: Mapping): Migration
       amountPence: decimalStringToPence(t.amount),
       direction: t.type === "income" ? "in" : "out",
       categoryName: target,
-      vendorExternalRef,
+      vendorExternalRef: hasContact ? `akaunting:contact:${t.contactId}` : null,
       description: t.description,
     });
   }
 
   const vendors: VendorPayload[] = snapshot.contacts
     .filter((c) => usedContactIds.has(c.id))
+    .sort((a, b) => a.id - b.id)
     .map((c) => ({
       externalRef: `akaunting:contact:${c.id}`,
       name: c.name,

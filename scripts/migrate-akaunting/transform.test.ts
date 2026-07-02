@@ -154,4 +154,22 @@ describe("buildPlan", () => {
     const plan = buildPlan(s, baseMapping());
     expect(plan.vendors[0].contactDetails).toBe("a@b.com | 0123 | 1 High St");
   });
+
+  it("skips a GBP transaction that has no category", () => {
+    const s = baseSnapshot();
+    s.transactions[1].categoryId = null; // the rent income txn (id 101)
+    const plan = buildPlan(s, baseMapping());
+    expect(plan.transactions.map((t) => t.externalRef)).toEqual(["akaunting:transaction:100"]);
+    expect(plan.skipped).toEqual([{ id: 101, reason: "transaction has no category" }]);
+  });
+
+  it("imports a transaction whose contact is missing from the snapshot, with no vendor link", () => {
+    const s = baseSnapshot();
+    s.contacts = []; // contact 7 no longer present (e.g. soft-deleted in Akaunting)
+    const plan = buildPlan(s, baseMapping());
+    const repair = plan.transactions.find((t) => t.externalRef === "akaunting:transaction:100");
+    expect(repair?.vendorExternalRef).toBeNull(); // no phantom link
+    expect(plan.vendors).toEqual([]); // nothing to create
+    expect(plan.transactions).toHaveLength(2); // both txns still imported
+  });
 });
