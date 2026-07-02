@@ -54,7 +54,7 @@ async function main() {
         dryRun: hasFlag("dry-run"),
         attachmentsDir: flag("attachments-dir"),
       });
-      console.log(`${hasFlag("dry-run") ? "[dry-run] " : ""}Properties: ${res.propertiesCreated}, Vendors: ${res.vendorsCreated}, Transactions: ${res.transactionsCreated}, Attachments: ${res.attachmentsCopied}, Skipped: ${res.skipped}`);
+      console.log(`${hasFlag("dry-run") ? "[dry-run] " : ""}Properties: ${res.propertiesCreated}, Vendors: ${res.vendorsCreated}, Transactions: ${res.transactionsCreated}, Recurring: ${res.recurringCreated}, Attachments: ${res.attachmentsCopied}, Skipped: ${res.skipped}`);
     } finally {
       await prisma.$disconnect();
     }

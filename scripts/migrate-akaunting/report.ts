@@ -1,5 +1,5 @@
 import type { SourceSnapshot, Mapping } from "./types";
-import { buildPlan, validateMapping } from "./transform";
+import { buildPlan, buildRecurringPlan, validateMapping } from "./transform";
 
 const escapeCell = (s: string): string => s.replace(/\|/g, "\\|");
 
@@ -54,6 +54,21 @@ export function buildReport(snapshot: SourceSnapshot, mapping: Mapping): string 
     lines.push("## Skipped transactions (not imported)", "");
     for (const s of permanentSkips) lines.push(`- Transaction ${s.id}: ${s.reason}`);
     lines.push("");
+  }
+
+  const recPlan = buildRecurringPlan(snapshot, mapping);
+  lines.push("## Recurring rules", "");
+  if (recPlan.recurring.length === 0) {
+    lines.push("No active recurring rules to import.", "");
+  } else {
+    lines.push(`${recPlan.recurring.length} recurring rule(s) will be created (they generate future transactions only — no history is backfilled):`, "");
+    for (const r of recPlan.recurring) {
+      lines.push(`- ${r.direction === "in" ? "Income" : "Expense"} £${(r.amountPence / 100).toFixed(2)} ${r.frequency} (day ${r.dayOfMonth}) → ${r.categoryName}`);
+    }
+    lines.push("");
+  }
+  if (recPlan.skipped.length > 0) {
+    lines.push(`${recPlan.skipped.length} older/other recurring definition(s) skipped (superseded or unsupported).`, "");
   }
 
   lines.push("## Attachments", "");

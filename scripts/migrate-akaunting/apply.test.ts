@@ -88,4 +88,21 @@ describe("applyPlan", () => {
     expect(await prisma.transaction.count()).toBe(2);
     expect(await prisma.property.count()).toBe(1);
   });
+
+  it("creates recurring rules idempotently", async () => {
+    const snap = snapshot();
+    snap.recurring = [
+      { id: 16, templateTxnId: 101, frequency: "monthly", interval: 1, startedAt: "2025-12-18T00:00:00.000Z", status: "active", type: "income", amount: "750.00", currencyCode: "GBP", categoryId: 6, contactId: 7, description: "Rent" },
+    ];
+    const res1 = await applyPlan(prisma, snap, mapping(), {});
+    expect(res1.recurringCreated).toBe(1);
+    const rule = await prisma.recurringRule.findUnique({ where: { externalRef: "akaunting:recurring:16" } });
+    expect(rule?.amountPence).toBe(75000);
+    expect(rule?.frequency).toBe("monthly");
+    expect(rule?.direction).toBe("in");
+    // idempotent
+    const res2 = await applyPlan(prisma, snap, mapping(), {});
+    expect(res2.recurringCreated).toBe(0);
+    expect(await prisma.recurringRule.count()).toBe(1);
+  });
 });

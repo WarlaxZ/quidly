@@ -2,7 +2,7 @@ import { copyFileSync, existsSync, mkdirSync } from "node:fs";
 import { basename, join } from "node:path";
 import type { PrismaClient } from "@prisma/client";
 import type { Mapping, SourceSnapshot, PropertyDecision } from "./types";
-import { buildPlan, validateMapping } from "./transform";
+import { buildPlan, buildRecurringPlan, validateMapping } from "./transform";
 
 export interface ApplyOptions {
   dryRun?: boolean;
@@ -14,6 +14,7 @@ export interface ApplyResult {
   propertiesCreated: number;
   vendorsCreated: number;
   transactionsCreated: number;
+  recurringCreated: number;
   attachmentsCopied: number;
   skipped: number;
 }
@@ -44,7 +45,7 @@ export async function applyPlan(
   const plan = buildPlan(snapshot, mapping);
   const result: ApplyResult = {
     propertiesCreated: 0, vendorsCreated: 0, transactionsCreated: 0,
-    attachmentsCopied: 0, skipped: plan.skipped.length,
+    recurringCreated: 0, attachmentsCopied: 0, skipped: plan.skipped.length,
   };
 
   if (opts.dryRun) {
@@ -55,6 +56,7 @@ export async function applyPlan(
     }
     result.vendorsCreated = plan.vendors.length;
     result.transactionsCreated = plan.transactions.length;
+    result.recurringCreated = buildRecurringPlan(snapshot, mapping).recurring.length;
     return result;
   }
 
@@ -111,6 +113,36 @@ export async function applyPlan(
       },
     });
     result.transactionsCreated++;
+  }
+
+  // Recurring rules (idempotent by externalRef).
+  const recurringPlan = buildRecurringPlan(snapshot, mapping);
+  for (const r of recurringPlan.recurring) {
+    const existing = await prisma.recurringRule.findUnique({ where: { externalRef: r.externalRef } });
+    if (existing) continue;
+    // ensure the category is resolved (recurring may use a category no transaction used)
+    let categoryId = categoryIdByName.get(r.categoryName);
+    if (!categoryId) {
+      const cat = await prisma.category.findUnique({ where: { name: r.categoryName } });
+      if (!cat) throw new Error(`Quidly category "${r.categoryName}" not found — run \`npm run db:seed\` first.`);
+      categoryId = cat.id;
+      categoryIdByName.set(r.categoryName, categoryId);
+    }
+    await prisma.recurringRule.create({
+      data: {
+        propertyId: propertyIdByCompany.get(r.akauntingCompanyId)!,
+        categoryId,
+        vendorId: r.vendorExternalRef ? vendorIdByRef.get(r.vendorExternalRef) ?? null : null,
+        amountPence: r.amountPence,
+        direction: r.direction,
+        frequency: r.frequency,
+        dayOfMonth: r.dayOfMonth,
+        startDate: new Date(r.startDate),
+        lastGeneratedDate: new Date(r.lastGeneratedDate),
+        externalRef: r.externalRef,
+      },
+    });
+    result.recurringCreated++;
   }
 
   if (opts.attachmentsDir) {
