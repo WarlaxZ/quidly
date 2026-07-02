@@ -43,6 +43,15 @@ describe("suggestCategory", () => {
   it("never suggests an income category for an expense", () => {
     expect(suggestCategory("Rent", "expense")).not.toBe("Rent received");
   });
+  it("exact-matches a Quidly category name, including behind a 'TAX:' prefix", () => {
+    expect(suggestCategory("Other allowable property expenses", "expense")).toBe("Other allowable property expenses");
+    expect(suggestCategory("TAX: Other allowable property expenses", "expense")).toBe("Other allowable property expenses");
+    expect(suggestCategory("TAX: Rent, rates, insurance, ground rents", "expense")).toBe("Rent, rates, insurance, ground rents");
+    expect(suggestCategory("TAX: Costs of services provided, including wages", "expense")).toBe("Costs of services provided, including wages");
+  });
+  it("leaves a TAX-prefixed category with no Quidly equivalent unmapped", () => {
+    expect(suggestCategory("TAX: Non-residential property finance costs", "expense")).toBeNull();
+  });
   it("does not fire on substring or semantic false positives", () => {
     expect(suggestCategory("Fixtures and fittings", "expense")).toBeNull(); // not "fix"→repairs
     expect(suggestCategory("Coffee for viewings", "expense")).toBeNull();   // not "fee"→professional

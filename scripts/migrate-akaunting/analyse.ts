@@ -1,3 +1,5 @@
+// Analyse phase: load the Akaunting dump, freeze a snapshot, and produce the editable
+// mapping.json + human report.md the user reviews before running apply.
 import { mkdirSync, writeFileSync, existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { startMariaWithDump } from "./mariadb";
@@ -8,7 +10,7 @@ import type { Mapping, CategoryDecision, PropertyDecision, SourceSnapshot } from
 
 const OUT_DIR = "akaunting-migration";
 
-function buildInitialMapping(snapshot: SourceSnapshot): Mapping {
+export function buildInitialMapping(snapshot: SourceSnapshot): Mapping {
   const counts = new Map<number, number>();
   for (const t of snapshot.transactions) {
     if (t.categoryId != null) counts.set(t.categoryId, (counts.get(t.categoryId) ?? 0) + 1);
@@ -44,14 +46,23 @@ export async function analyse(dumpPath: string, opts: { force?: boolean } = {}):
   writeFileSync(join(OUT_DIR, "source.json"), JSON.stringify(snapshot, null, 2));
 
   const mappingPath = join(OUT_DIR, "mapping.json");
+  let currentMapping: Mapping;
   if (existsSync(mappingPath) && !opts.force) {
+    currentMapping = JSON.parse(readFileSync(mappingPath, "utf8")) as Mapping;
     console.log(`Kept existing ${mappingPath} (use --force to regenerate).`);
+    const newIds = snapshot.categories
+      .filter((c) => c.type === "income" || c.type === "expense")
+      .map((c) => c.id)
+      .filter((id) => !currentMapping.categories.some((cd) => cd.akauntingId === id));
+    if (newIds.length > 0) {
+      console.warn(`WARNING: ${newIds.length} category id(s) in the dump are not in mapping.json — re-run with --force to include them.`);
+    }
   } else {
-    writeFileSync(mappingPath, JSON.stringify(buildInitialMapping(snapshot), null, 2));
+    currentMapping = buildInitialMapping(snapshot);
+    writeFileSync(mappingPath, JSON.stringify(currentMapping, null, 2));
     console.log(`Wrote ${mappingPath}.`);
   }
 
-  const currentMapping: Mapping = JSON.parse(readFileSync(mappingPath, "utf8"));
   writeFileSync(join(OUT_DIR, "report.md"), buildReport(snapshot, currentMapping));
 
   console.log(`Analyse complete. Review ${OUT_DIR}/report.md and ${mappingPath}, then run apply.`);

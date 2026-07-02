@@ -1,4 +1,4 @@
-import type { QuidlyCategoryName } from "./types";
+import { QUIDLY_CATEGORY_NAMES, type QuidlyCategoryName } from "./types";
 
 /**
  * Heuristic mapping from an Akaunting category (name + income/expense type) to a
@@ -15,6 +15,14 @@ export function suggestCategory(
   type: "income" | "expense",
 ): QuidlyCategoryName | null {
   const lower = name.toLowerCase();
+  // Strongest signal: the category name IS a Quidly category name, optionally behind a
+  // "Label: " prefix (e.g. "TAX: Other allowable property expenses"). Common when the user
+  // named their Akaunting categories after the SA105 boxes. Checked before keyword heuristics.
+  const trimmed = lower.trim();
+  for (const candidate of [trimmed, trimmed.replace(/^[^:]*:\s*/, "").trim()]) {
+    const exact = QUIDLY_CATEGORY_NAMES.find((q) => q.toLowerCase() === candidate);
+    if (exact) return exact;
+  }
   const stem = (w: string) => (w.endsWith("s") ? w.slice(0, -1) : w);
   const words = new Set((lower.match(/[a-z]+/g) ?? []).map(stem));
   const word = (...ws: string[]) => ws.some((w) => words.has(stem(w)));
