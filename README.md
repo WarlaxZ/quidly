@@ -5,7 +5,7 @@
 ![Licence: AGPL-3.0](https://img.shields.io/badge/licence-AGPL--3.0-1f3d30)
 ![Next.js 16](https://img.shields.io/badge/Next.js-16-000)
 ![SQLite](https://img.shields.io/badge/db-SQLite-044a64)
-![Tests](https://img.shields.io/badge/tests-198%20passing-3a7d54)
+![Tests](https://img.shields.io/badge/tests-261%20passing-3a7d54)
 
 Quidly is a self-hosted bookkeeping app built for UK landlords: track rent and expenses across your properties, then turn them into an SA105 you can file. Run it on your own box, keep your own data.
 
@@ -70,6 +70,31 @@ npm test                        # 198 tests
 ```
 
 Prisma v7 note: the datasource URL is configured in `prisma.config.ts` (read from `DATABASE_URL`), and migrations are hand-authored SQL applied with `migrate deploy` — **not** `migrate dev`.
+
+## Migrating from Akaunting
+
+Import your existing Akaunting data (transactions, vendors, categories) into Quidly.
+
+**Prerequisites:** Docker (for the analyse step) and a MySQL/MariaDB dump of your Akaunting database (`.sql`).
+
+```bash
+# 1. Analyse the dump — loads it into a throwaway MariaDB and writes a review pack
+npm run migrate:akaunting:analyse -- ./akaunting-migration/dump.sql
+
+# 2. Review akaunting-migration/report.md (incl. "what's missing") and edit
+#    akaunting-migration/mapping.json — set a "target" for any unmapped category.
+
+# 3. Dry-run (writes nothing), then apply for real
+npm run migrate:akaunting:apply -- --dry-run
+npm run migrate:akaunting:apply
+
+# Optional: also copy receipt files from Akaunting's storage folder
+npm run migrate:akaunting:apply -- --attachments-dir /path/to/akaunting/storage
+```
+
+Each Akaunting *company* becomes a Quidly *property*, categories are mapped onto SA105 boxes (you review the suggestions), and recurring items carry across. Amounts are treated as GBP; non-GBP transactions are listed and skipped. The import is idempotent — re-running is safe and never duplicates (imported rows are tagged with an `externalRef`). Files under `akaunting-migration/` are git-ignored as they may contain financial data.
+
+**📖 Full walkthrough: [docs/migrating-from-akaunting.md](docs/migrating-from-akaunting.md)** — how to export your Akaunting dump, review the category mapping, handle recurring items and attachments, and troubleshoot.
 
 ## Configuration
 

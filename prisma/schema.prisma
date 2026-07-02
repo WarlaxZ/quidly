@@ -63,6 +63,7 @@ model Vendor {
   name              String
   contactDetails    String?
   notes             String?
+  externalRef       String?       @unique
   defaultCategoryId String?
   defaultCategory   Category?     @relation(fields: [defaultCategoryId], references: [id])
   transactions      Transaction[]
@@ -95,6 +96,7 @@ model Transaction {
   recurringId  String?
   recurring    RecurringRule? @relation(fields: [recurringId], references: [id])
   source       TxnSource    @default(manual)
+  externalRef  String?      @unique
   attachmentId String?
   attachment   Attachment?  @relation(fields: [attachmentId], references: [id])
   createdAt    DateTime     @default(now())
@@ -118,6 +120,7 @@ model RecurringRule {
   startDate         DateTime
   endDate           DateTime?
   lastGeneratedDate DateTime?
+  externalRef       String?        @unique
   transactions      Transaction[]
 }
 
