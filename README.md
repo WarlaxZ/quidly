@@ -92,7 +92,9 @@ npm run migrate:akaunting:apply
 npm run migrate:akaunting:apply -- --attachments-dir /path/to/akaunting/storage
 ```
 
-Each Akaunting *company* becomes a Quidly *property*. Amounts are treated as GBP; non-GBP transactions are listed and skipped. The import is idempotent — re-running is safe and never duplicates (imported rows are tagged with an `externalRef`). Files under `akaunting-migration/` are git-ignored as they may contain financial data.
+Each Akaunting *company* becomes a Quidly *property*, categories are mapped onto SA105 boxes (you review the suggestions), and recurring items carry across. Amounts are treated as GBP; non-GBP transactions are listed and skipped. The import is idempotent — re-running is safe and never duplicates (imported rows are tagged with an `externalRef`). Files under `akaunting-migration/` are git-ignored as they may contain financial data.
+
+**📖 Full walkthrough: [docs/migrating-from-akaunting.md](docs/migrating-from-akaunting.md)** — how to export your Akaunting dump, review the category mapping, handle recurring items and attachments, and troubleshoot.
 
 ## Configuration
 
