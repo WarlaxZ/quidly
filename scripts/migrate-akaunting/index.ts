@@ -11,10 +11,22 @@ const OUT_DIR = "akaunting-migration";
 
 function flag(name: string): string | undefined {
   const i = process.argv.indexOf(`--${name}`);
-  return i >= 0 ? process.argv[i + 1] : undefined;
+  if (i < 0) return undefined;
+  const val = process.argv[i + 1];
+  if (val === undefined || val.startsWith("--")) {
+    throw new Error(`--${name} requires a value.`);
+  }
+  return val;
 }
 function hasFlag(name: string): boolean {
   return process.argv.includes(`--${name}`);
+}
+function readJson<T>(path: string, label: string): T {
+  try {
+    return JSON.parse(readFileSync(path, "utf8")) as T;
+  } catch {
+    throw new Error(`Could not parse ${label} at ${path} — is it valid JSON? (Re-run analyse to regenerate.)`);
+  }
 }
 
 async function main() {
@@ -33,8 +45,8 @@ async function main() {
     if (!existsSync(snapshotPath) || !existsSync(mappingPath)) {
       throw new Error(`Run analyse first — missing ${snapshotPath} or ${mappingPath}.`);
     }
-    const snapshot: SourceSnapshot = JSON.parse(readFileSync(snapshotPath, "utf8"));
-    const mapping: Mapping = JSON.parse(readFileSync(mappingPath, "utf8"));
+    const snapshot = readJson<SourceSnapshot>(snapshotPath, "source.json");
+    const mapping = readJson<Mapping>(mappingPath, "mapping.json");
     const dbUrl = process.env.DATABASE_URL ?? "file:./dev.db";
     const prisma = new PrismaClient({ adapter: new PrismaBetterSqlite3({ url: dbUrl }) });
     try {
