@@ -7,6 +7,7 @@ import { updateTransactionAction } from "../../edit-actions";
 import { PageHeader } from "../../../_ui/PageHeader";
 import { Banner } from "../../../_ui/Banner";
 import { MoneyInput } from "../../../_ui/MoneyInput";
+import { VendorSelect } from "../../../_ui/VendorSelect";
 
 export default async function EditTransactionPage({
   params,
@@ -36,7 +37,7 @@ export default async function EditTransactionPage({
 
       {/* Edit form */}
       <section className="reveal" style={{ animationDelay: "60ms" }}>
-        <form action={updateTransactionAction} className="card p-6">
+        <form action={updateTransactionAction} encType="multipart/form-data" className="card p-6">
           <input type="hidden" name="id" value={txn.id} />
           <div className="grid gap-4 sm:grid-cols-2">
             <label>
@@ -76,24 +77,48 @@ export default async function EditTransactionPage({
             </label>
             <label>
               <span className="label">Vendor</span>
-              <select name="vendorId" defaultValue={txn.vendorId ?? ""} className="field">
-                <option value="">— vendor —</option>
-                {vendors.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.name}
-                  </option>
-                ))}
-              </select>
+              <VendorSelect vendors={vendors} defaultValue={txn.vendorId ?? ""} />
             </label>
-            <label>
+            <label className="sm:col-span-2">
               <span className="label">Description</span>
-              <input
+              <textarea
                 name="description"
                 defaultValue={txn.description ?? ""}
                 placeholder="Optional note"
+                rows={4}
                 className="field"
               />
             </label>
+          </div>
+          <div className="mt-4">
+            <span className="label">Receipt / invoice</span>
+            {txn.attachment ? (
+              <div className="mb-2 flex flex-wrap items-center gap-4 text-sm">
+                <a
+                  href={`/attachments/${txn.attachmentId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-forest hover:underline"
+                >
+                  View current: {txn.attachment.originalName}
+                </a>
+                <label className="flex items-center gap-1.5 text-muted">
+                  <input type="checkbox" name="removeAttachment" />
+                  Remove
+                </label>
+              </div>
+            ) : null}
+            <input
+              type="file"
+              name="file"
+              accept="image/jpeg,image/png,application/pdf"
+              className="field"
+            />
+            <p className="mt-1 text-xs text-faint">
+              {txn.attachment
+                ? "Upload a file to replace the current one."
+                : "Attach a JPG, PNG, or PDF (max 10 MB)."}
+            </p>
           </div>
           <div className="mt-6 flex items-center gap-3">
             <button type="submit" className="btn btn-primary">
