@@ -1,11 +1,11 @@
 import mysql from "mysql2/promise";
 import type {
   SourceSnapshot, SourceCompany, SourceContact, SourceCategory,
-  SourceTransaction, SourceAttachment,
+  SourceTransaction, SourceAttachment, SourceRecurring,
 } from "./types";
 
 /** Logical (unprefixed) Akaunting feature tables Quidly has no home for. */
-const FEATURE_TABLES = ["documents", "invoices", "bills", "items", "accounts", "transfers", "taxes", "recurring", "reconciliations"];
+const FEATURE_TABLES = ["documents", "invoices", "bills", "items", "accounts", "transfers", "taxes", "reconciliations"];
 
 /**
  * Akaunting stores paid_at as a naive local DATETIME. We read it as a string
@@ -103,13 +103,41 @@ export async function readSnapshot(mysqlConfig: object): Promise<SourceSnapshot>
       otherTableCounts[name] = Number((cntRows as { n: number }[])[0]?.n ?? 0);
     }
 
+    // Recurring definitions (attached to a template transaction). Include soft-deleted
+    // records + templates — buildRecurringPlan dedupes to the latest and filters to active.
+    let recurring: SourceRecurring[] = [];
+    if (logical.has("recurring")) {
+      const [recRows] = await conn.query(
+        `SELECT r.id AS id, r.recurable_id AS templateTxnId, r.frequency AS frequency, ` +
+          `r.\`interval\` AS intervalCount, r.started_at AS startedAt, r.status AS status, ` +
+          `t.type AS ttype, t.amount AS amount, t.currency_code AS currencyCode, ` +
+          `t.category_id AS categoryId, t.contact_id AS contactId, t.description AS description ` +
+          `FROM \`${T("recurring")}\` r JOIN \`${T("transactions")}\` t ON t.id = r.recurable_id ` +
+          `WHERE r.recurable_type LIKE '%Transaction%'`,
+      );
+      recurring = (recRows as any[]).map((r) => ({
+        id: r.id,
+        templateTxnId: r.templateTxnId,
+        frequency: String(r.frequency),
+        interval: Number(r.intervalCount ?? 1),
+        startedAt: paidAtToIso(r.startedAt),
+        status: String(r.status ?? ""),
+        type: String(r.ttype).startsWith("income") ? "income" : "expense",
+        amount: String(r.amount),
+        currencyCode: r.currencyCode,
+        categoryId: r.categoryId ?? null,
+        contactId: r.contactId ?? null,
+        description: r.description ?? null,
+      }));
+    }
+
     let akauntingVersion: string | null = null;
     if (logical.has("settings")) {
       const [vRows] = await conn.query(`SELECT value FROM \`${T("settings")}\` WHERE \`key\` = 'app.version' LIMIT 1`);
       akauntingVersion = (vRows as any[])[0]?.value ?? null;
     }
 
-    return { akauntingVersion, companies, contacts, categories, transactions, attachments, otherTableCounts };
+    return { akauntingVersion, companies, contacts, categories, transactions, attachments, otherTableCounts, recurring };
   } finally {
     await conn.end();
   }

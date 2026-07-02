@@ -37,6 +37,21 @@ export interface SourceAttachment {
   directory: string | null; // relative dir under Akaunting storage, if known
 }
 
+export interface SourceRecurring {
+  id: number;                  // akk_recurring.id
+  templateTxnId: number;       // recurable_id
+  frequency: string;           // "monthly" | "yearly" | ...
+  interval: number;
+  startedAt: string;           // ISO
+  status: string;
+  type: "income" | "expense";  // normalised from the template transaction
+  amount: string;              // decimal string
+  currencyCode: string;
+  categoryId: number | null;
+  contactId: number | null;
+  description: string | null;
+}
+
 export interface SourceSnapshot {
   akauntingVersion: string | null;
   companies: SourceCompany[];
@@ -46,6 +61,7 @@ export interface SourceSnapshot {
   attachments: SourceAttachment[];
   /** Row counts for other Akaunting tables, for the gap report. */
   otherTableCounts: Record<string, number>;
+  recurring?: SourceRecurring[];
 }
 
 /** The 9 Quidly target category names (unique). */
@@ -114,4 +130,27 @@ export interface MigrationPlan {
   vendors: VendorPayload[];
   transactions: TransactionPayload[];
   skipped: SkippedTransaction[];
+}
+
+export interface RecurringRulePayload {
+  externalRef: string;         // "akaunting:recurring:<id>"
+  akauntingCompanyId: number;  // resolved to propertyId at apply time
+  amountPence: number;
+  direction: "in" | "out";
+  categoryName: QuidlyCategoryName;
+  vendorExternalRef: string | null;
+  frequency: "monthly" | "quarterly" | "annual";
+  dayOfMonth: number;
+  startDate: string;           // ISO
+  lastGeneratedDate: string;   // ISO — newest imported txn date (no backfill)
+}
+
+export interface SkippedRecurring {
+  id: number;
+  reason: string;
+}
+
+export interface RecurringPlan {
+  recurring: RecurringRulePayload[];
+  skipped: SkippedRecurring[];
 }

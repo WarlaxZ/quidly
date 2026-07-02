@@ -1,10 +1,13 @@
 import type {
   SourceSnapshot, Mapping,
   MigrationPlan, TransactionPayload, VendorPayload, SkippedTransaction, QuidlyCategoryName,
+  SourceRecurring, RecurringRulePayload, SkippedRecurring, RecurringPlan,
 } from "./types";
 
 /** The two income Quidly categories; everything else is expense/finance/capital. */
 const QUIDLY_INCOME_NAMES = new Set(["Rent received", "Other property income"]);
+
+const RECURRING_ACTIVE_MONTHS = 18; // a recurrence whose latest start is older than this (relative to the newest transaction) is treated as discontinued
 
 /**
  * Convert an Akaunting decimal amount string (up to 4dp) to integer pence,
@@ -148,4 +151,84 @@ export function buildPlan(snapshot: SourceSnapshot, mapping: Mapping): Migration
     }));
 
   return { vendors, transactions, skipped };
+}
+
+function mapFrequency(freq: string, interval: number): RecurringRulePayload["frequency"] | null {
+  const f = freq.toLowerCase();
+  if (f === "yearly" || f === "annual" || (f === "monthly" && interval === 12)) return "annual";
+  if (f === "monthly" && interval === 3) return "quarterly";
+  if (f === "monthly" && interval === 1) return "monthly";
+  return null; // daily/weekly/other intervals: no Quidly equivalent
+}
+
+/**
+ * Build Quidly recurring rules from Akaunting recurring definitions.
+ * Akaunting churns recurring records (soft-deletes + recreates), so we dedupe by
+ * (type, category, contact) keeping the latest start, then keep only recurrences whose
+ * latest start is within RECURRING_ACTIVE_MONTHS of the newest transaction (i.e. still active).
+ * lastGeneratedDate is set to the newest imported transaction date so generation never
+ * backfills already-imported history.
+ */
+export function buildRecurringPlan(snapshot: SourceSnapshot, mapping: Mapping): RecurringPlan {
+  const recurring: RecurringRulePayload[] = [];
+  const skipped: SkippedRecurring[] = [];
+  const src = snapshot.recurring ?? [];
+  if (src.length === 0) return { recurring, skipped };
+
+  const assume = mapping.currency.assume;
+  const targetByCategoryId = new Map<number, QuidlyCategoryName | null>(
+    mapping.categories.map((c) => [c.akauntingId, c.target]),
+  );
+  const contactIds = new Set(snapshot.contacts.map((c) => c.id));
+
+  // newest transaction date = the "as of" reference for recency + lastGeneratedDate.
+  const txnDates = snapshot.transactions.map((t) => new Date(t.paidAt).getTime());
+  const asOfMs = txnDates.length ? Math.max(...txnDates) : new Date(src[0].startedAt).getTime();
+  const asOf = new Date(asOfMs);
+  const cutoff = new Date(asOf);
+  cutoff.setMonth(cutoff.getMonth() - RECURRING_ACTIVE_MONTHS);
+
+  // dedupe by (type, categoryId, contactId), keeping the latest startedAt
+  const latest = new Map<string, SourceRecurring>();
+  for (const r of src) {
+    const key = `${r.type}|${r.categoryId ?? "?"}|${r.contactId ?? "?"}`;
+    const prev = latest.get(key);
+    if (!prev || new Date(r.startedAt) > new Date(prev.startedAt)) latest.set(key, r);
+  }
+
+  for (const r of latest.values()) {
+    if (new Date(r.startedAt) < cutoff) {
+      skipped.push({ id: r.id, reason: `discontinued (last started ${r.startedAt.slice(0, 10)}, older than ${RECURRING_ACTIVE_MONTHS} months)` });
+      continue;
+    }
+    if (r.currencyCode.toUpperCase() !== assume.toUpperCase()) {
+      skipped.push({ id: r.id, reason: `non-GBP currency ${r.currencyCode}` });
+      continue;
+    }
+    const freq = mapFrequency(r.frequency, r.interval);
+    if (!freq) {
+      skipped.push({ id: r.id, reason: `unsupported frequency ${r.frequency}/interval ${r.interval}` });
+      continue;
+    }
+    const target = r.categoryId != null ? targetByCategoryId.get(r.categoryId) : null;
+    if (!target) {
+      skipped.push({ id: r.id, reason: `no category target for category id ${r.categoryId}` });
+      continue;
+    }
+    const hasContact = r.contactId != null && contactIds.has(r.contactId);
+    const day = new Date(r.startedAt).getUTCDate();
+    recurring.push({
+      externalRef: `akaunting:recurring:${r.id}`,
+      akauntingCompanyId: snapshot.companies[0]?.id ?? 1, // recurring rows are company-scoped; single-company installs → the one property
+      amountPence: decimalStringToPence(r.amount),
+      direction: r.type === "income" ? "in" : "out",
+      categoryName: target,
+      vendorExternalRef: hasContact ? `akaunting:contact:${r.contactId}` : null,
+      frequency: freq,
+      dayOfMonth: Math.min(day, 28),
+      startDate: r.startedAt,
+      lastGeneratedDate: asOf.toISOString(),
+    });
+  }
+  return { recurring, skipped };
 }

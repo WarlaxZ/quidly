@@ -120,6 +120,7 @@ model RecurringRule {
   startDate         DateTime
   endDate           DateTime?
   lastGeneratedDate DateTime?
+  externalRef       String?        @unique
   transactions      Transaction[]
 }
 

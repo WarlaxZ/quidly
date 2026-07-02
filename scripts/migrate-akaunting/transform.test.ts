@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { decimalStringToPence, validateMapping, buildPlan } from "./transform";
+import { decimalStringToPence, validateMapping, buildPlan, buildRecurringPlan } from "./transform";
 import type { SourceSnapshot, Mapping } from "./types";
 
 function baseSnapshot(): SourceSnapshot {
@@ -177,5 +177,42 @@ describe("buildPlan", () => {
     expect(repair?.vendorExternalRef).toBeNull(); // no phantom link
     expect(plan.vendors).toEqual([]); // nothing to create
     expect(plan.transactions).toHaveLength(2); // both txns still imported
+  });
+});
+
+describe("buildRecurringPlan", () => {
+  function recSnapshot(): SourceSnapshot {
+    const base = baseSnapshot();
+    base.transactions = [
+      { id: 900, companyId: 1, type: "income", categoryId: 6, contactId: 7, paidAt: "2026-06-01T00:00:00.000Z", amount: "750.00", currencyCode: "GBP", description: "Rent" },
+    ];
+    base.recurring = [
+      // two records for the same logical rent recurrence — latest should win
+      { id: 1, templateTxnId: 900, frequency: "monthly", interval: 1, startedAt: "2024-01-18T00:00:00.000Z", status: "active", type: "income", amount: "700.00", currencyCode: "GBP", categoryId: 6, contactId: 7, description: "Rent" },
+      { id: 2, templateTxnId: 901, frequency: "monthly", interval: 1, startedAt: "2025-12-18T00:00:00.000Z", status: "active", type: "income", amount: "750.00", currencyCode: "GBP", categoryId: 6, contactId: 7, description: "Rent" },
+      // discontinued: last started > 18 months before newest txn (2026-06). Distinct
+      // dedupe key (contactId 7) so it isn't collapsed with the weekly expense below.
+      { id: 3, templateTxnId: 902, frequency: "monthly", interval: 1, startedAt: "2021-04-06T00:00:00.000Z", status: "active", type: "expense", amount: "5.00", currencyCode: "GBP", categoryId: 5, contactId: 7, description: "Old sub" },
+      // unsupported frequency
+      { id: 4, templateTxnId: 903, frequency: "weekly", interval: 1, startedAt: "2026-01-01T00:00:00.000Z", status: "active", type: "expense", amount: "9.00", currencyCode: "GBP", categoryId: 5, contactId: null, description: "Weekly" },
+    ];
+    return base;
+  }
+  it("dedupes to the latest recurrence and maps a monthly rent rule", () => {
+    const plan = buildRecurringPlan(recSnapshot(), baseMapping());
+    const rent = plan.recurring.find((r) => r.categoryName === "Rent received");
+    expect(rent).toBeTruthy();
+    expect(rent!.externalRef).toBe("akaunting:recurring:2"); // latest
+    expect(rent!.amountPence).toBe(75000);
+    expect(rent!.direction).toBe("in");
+    expect(rent!.frequency).toBe("monthly");
+    expect(rent!.dayOfMonth).toBe(18);
+    expect(rent!.vendorExternalRef).toBe("akaunting:contact:7");
+    expect(rent!.lastGeneratedDate).toBe("2026-06-01T00:00:00.000Z");
+  });
+  it("skips discontinued and unsupported-frequency recurrences", () => {
+    const plan = buildRecurringPlan(recSnapshot(), baseMapping());
+    expect(plan.skipped.some((s) => s.id === 3 && /discontinued/.test(s.reason))).toBe(true);
+    expect(plan.skipped.some((s) => s.id === 4 && /unsupported frequency/.test(s.reason))).toBe(true);
   });
 });
