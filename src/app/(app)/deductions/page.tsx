@@ -15,7 +15,8 @@ export default async function DeductionsPage({ searchParams }: { searchParams: P
     listPersonalProperties(),
     getActiveProperty(),
   ]);
-  const activePropertyId = active.propertyId ?? properties[0]?.id ?? "";
+  const activePropertyId =
+    (active.propertyId && properties.some((p) => p.id === active.propertyId) ? active.propertyId : properties[0]?.id) ?? "";
   const activePropertyName = properties.find((p) => p.id === activePropertyId)?.name ?? "your property";
 
   const considered = statuses.filter((s) => s.state === "consider");

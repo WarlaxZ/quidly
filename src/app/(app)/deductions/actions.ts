@@ -29,34 +29,42 @@ export async function undismissDeductionAction(formData: FormData) {
 export async function logDeductionAction(formData: FormData) {
   await requireSession();
   const taxYear = String(formData.get("taxYear") ?? "");
-  const back = (msg: string, ok = false) =>
+  const back = (msg: string, ok = false): never =>
     redirect(`/deductions?ty=${encodeURIComponent(taxYear)}&${ok ? "ok" : "error"}=${encodeURIComponent(msg)}`);
 
   const item = DEDUCTION_CATALOG.find((i) => i.key === String(formData.get("itemKey") ?? ""));
-  if (!item) back("Unknown deduction item.");
-  const propertyId = String(formData.get("propertyId") ?? "");
-  if (!propertyId) back("Choose a property.");
+  if (!item) return back("Unknown deduction item.");
 
-  let amountPence!: number;
+  const propertyId = String(formData.get("propertyId") ?? "");
+  const property = propertyId
+    ? await prisma.property.findFirst({ where: { id: propertyId, ownershipType: "personal" } })
+    : null;
+  if (!property) return back("Choose a valid property.");
+
+  const rawDate = String(formData.get("date") ?? "");
+  const date = new Date(rawDate);
+  if (!rawDate || Number.isNaN(date.getTime())) return back("Enter a valid date.");
+
+  let amountPence: number;
   try {
     amountPence = parseAmountToPence(String(formData.get("amount") ?? ""));
   } catch (e) {
-    back((e as Error).message);
+    return back((e as Error).message);
   }
 
-  const category = await prisma.category.findUnique({ where: { name: item!.categoryName } });
-  if (!category) back(`Category "${item!.categoryName}" not found — run the seed.`);
+  const category = await prisma.category.findUnique({ where: { name: item.categoryName } });
+  if (!category) return back(`Category "${item.categoryName}" not found — run the seed.`);
 
   await createTransaction({
-    propertyId,
-    categoryId: category!.id,
-    date: new Date(String(formData.get("date"))),
-    amountPence,
+    propertyId: property.id,
+    categoryId: category.id,
+    date,
+    amountPence: amountPence!,
     direction: "out",
     vendorId: null,
-    description: String(formData.get("description") ?? "") || item!.title,
+    description: String(formData.get("description") ?? "") || item.title,
   });
   revalidatePath("/deductions");
   revalidatePath("/transactions");
-  back(`Logged ${item!.title}`, true);
+  back(`Logged ${item.title}`, true);
 }
