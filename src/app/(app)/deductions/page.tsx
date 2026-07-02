@@ -6,6 +6,7 @@ import { Banner } from "../_ui/Banner";
 import { EmptyState } from "../_ui/EmptyState";
 import { dismissDeductionAction, undismissDeductionAction } from "./actions";
 import { LogItForm } from "./LogItForm";
+import { MileageForm } from "./MileageForm";
 
 export default async function DeductionsPage({ searchParams }: { searchParams: Promise<{ ty?: string; ok?: string; error?: string }> }) {
   const { ty, ok, error } = await searchParams;
@@ -18,6 +19,7 @@ export default async function DeductionsPage({ searchParams }: { searchParams: P
   const activePropertyId =
     (active.propertyId && properties.some((p) => p.id === active.propertyId) ? active.propertyId : properties[0]?.id) ?? "";
   const activePropertyName = properties.find((p) => p.id === activePropertyId)?.name ?? "your property";
+  const activeRoundTrip = properties.find((p) => p.id === activePropertyId)?.roundTripMiles ?? null;
 
   const considered = statuses.filter((s) => s.state === "consider");
   const covered = statuses.filter((s) => s.state === "covered");
@@ -62,7 +64,11 @@ export default async function DeductionsPage({ searchParams }: { searchParams: P
                       <button className="btn btn-ghost" type="submit">Not applicable</button>
                     </form>
                   </div>
-                  <LogItForm taxYear={taxYear} itemKey={item.key} title={item.title} activePropertyId={activePropertyId} activePropertyName={activePropertyName} />
+                  {item.action === "mileage" ? (
+                    <MileageForm taxYear={taxYear} propertyId={activePropertyId} propertyName={activePropertyName} roundTripMiles={activeRoundTrip} />
+                  ) : (
+                    <LogItForm taxYear={taxYear} itemKey={item.key} title={item.title} activePropertyId={activePropertyId} activePropertyName={activePropertyName} />
+                  )}
                 </div>
               ))}
             </section>
