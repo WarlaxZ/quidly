@@ -12,6 +12,7 @@ export interface TransactionInput {
   direction: Direction;
   vendorId?: string | null;
   description?: string | null;
+  miles?: number | null;
   attachmentId?: string | null;
   source?: "manual" | "recurring" | "imported";
 }
