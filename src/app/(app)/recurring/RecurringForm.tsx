@@ -197,7 +197,7 @@ export function RecurringForm({
           )}
           <label>
             <span className="label">Day of month</span>
-            <input type="number" min={1} max={31} value={dayOfMonth} onChange={(e) => setDayOfMonth(Number(e.target.value))} className="field w-24" />
+            <input type="number" min={1} max={31} value={dayOfMonth} onChange={(e) => setDayOfMonth(Math.max(1, Math.min(31, Number(e.target.value) || 1)))} className="field w-24" />
           </label>
           <button type="button" onClick={() => setDayOfMonth(31)} className="btn btn-ghost">Last day</button>
         </div>
