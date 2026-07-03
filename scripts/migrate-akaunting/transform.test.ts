@@ -205,14 +205,22 @@ describe("buildRecurringPlan", () => {
     expect(rent!.externalRef).toBe("akaunting:recurring:2"); // latest
     expect(rent!.amountPence).toBe(75000);
     expect(rent!.direction).toBe("in");
-    expect(rent!.frequency).toBe("monthly");
+    expect(rent!.intervalUnit).toBe("MONTH");
+    expect(rent!.intervalCount).toBe(1);
     expect(rent!.dayOfMonth).toBe(18);
+    expect(rent!.description).toBe("Rent");
     expect(rent!.vendorExternalRef).toBe("akaunting:contact:7");
     expect(rent!.lastGeneratedDate).toBe("2026-06-01T00:00:00.000Z");
   });
-  it("skips discontinued and unsupported-frequency recurrences", () => {
+  it("skips discontinued recurrences but imports weekly ones", () => {
     const plan = buildRecurringPlan(recSnapshot(), baseMapping());
-    expect(plan.skipped.some((s) => s.id === 3 && /discontinued/.test(s.reason))).toBe(true);
-    expect(plan.skipped.some((s) => s.id === 4 && /unsupported frequency/.test(s.reason))).toBe(true);
+    expect(plan.skipped.some((s) => /discontinued/.test(s.reason))).toBe(true);
+    expect(plan.skipped.some((s) => s.id === 4)).toBe(false);
+    const weekly = plan.recurring.find((r) => r.externalRef === "akaunting:recurring:4");
+    expect(weekly).toBeDefined();
+    expect(weekly!.intervalUnit).toBe("WEEK");
+    expect(weekly!.intervalCount).toBe(1);
+    // 2026-01-01 is a Thursday -> dayOfWeek 3 (Mon=0)
+    expect(weekly!.dayOfWeek).toBe(3);
   });
 });

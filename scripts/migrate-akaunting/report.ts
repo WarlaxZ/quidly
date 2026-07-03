@@ -1,5 +1,6 @@
 import type { SourceSnapshot, Mapping } from "./types";
 import { buildPlan, buildRecurringPlan, validateMapping } from "./transform";
+import { describeSchedule } from "../../src/lib/recurring/describe";
 
 const escapeCell = (s: string): string => s.replace(/\|/g, "\\|");
 
@@ -63,7 +64,17 @@ export function buildReport(snapshot: SourceSnapshot, mapping: Mapping): string 
   } else {
     lines.push(`${recPlan.recurring.length} recurring rule(s) will be created (they generate future transactions only — no history is backfilled):`, "");
     for (const r of recPlan.recurring) {
-      lines.push(`- ${r.direction === "in" ? "Income" : "Expense"} £${(r.amountPence / 100).toFixed(2)} ${r.frequency} (day ${r.dayOfMonth}) → ${r.categoryName}`);
+      const sched = describeSchedule({
+        intervalUnit: r.intervalUnit,
+        intervalCount: r.intervalCount,
+        dayOfWeek: r.dayOfWeek,
+        dayOfMonth: r.dayOfMonth,
+        monthOfYear: r.monthOfYear,
+        startDate: new Date(r.startDate),
+        endDate: null,
+        lastGeneratedDate: null,
+      });
+      lines.push(`- ${r.direction === "in" ? "Income" : "Expense"} £${(r.amountPence / 100).toFixed(2)} — ${sched} → ${r.categoryName}`);
     }
     lines.push("");
     lines.push("_Recurring import is best-effort (Akaunting churns its recurring records) — review these on the /recurring page before clicking \"generate due\"._");

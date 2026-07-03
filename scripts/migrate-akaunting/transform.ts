@@ -153,12 +153,32 @@ export function buildPlan(snapshot: SourceSnapshot, mapping: Mapping): Migration
   return { vendors, transactions, skipped };
 }
 
-function mapFrequency(freq: string, interval: number): RecurringRulePayload["frequency"] | null {
+interface ScheduleFields {
+  intervalUnit: RecurringRulePayload["intervalUnit"];
+  intervalCount: number;
+  dayOfWeek: number | null;
+  dayOfMonth: number | null;
+  monthOfYear: number | null;
+}
+
+/** JS getUTCDay is 0=Sun..6=Sat; convert to 0=Mon..6=Sun. */
+function weekdayMon0(d: Date): number {
+  return (d.getUTCDay() + 6) % 7;
+}
+
+function clampDom(day: number): number {
+  return Math.min(Math.max(day, 1), 31);
+}
+
+function mapSchedule(freq: string, interval: number, startedAt: string): ScheduleFields | null {
   const f = freq.toLowerCase();
-  if (f === "yearly" || f === "annual" || (f === "monthly" && interval === 12)) return "annual";
-  if (f === "monthly" && interval === 3) return "quarterly";
-  if (f === "monthly" && interval === 1) return "monthly";
-  return null; // daily/weekly/other intervals: no Quidly equivalent
+  const count = Math.max(1, interval || 1);
+  const d = new Date(startedAt);
+  if (f === "daily") return { intervalUnit: "DAY", intervalCount: count, dayOfWeek: null, dayOfMonth: null, monthOfYear: null };
+  if (f === "weekly") return { intervalUnit: "WEEK", intervalCount: count, dayOfWeek: weekdayMon0(d), dayOfMonth: null, monthOfYear: null };
+  if (f === "monthly") return { intervalUnit: "MONTH", intervalCount: count, dayOfWeek: null, dayOfMonth: clampDom(d.getUTCDate()), monthOfYear: null };
+  if (f === "yearly" || f === "annual") return { intervalUnit: "YEAR", intervalCount: count, dayOfWeek: null, dayOfMonth: clampDom(d.getUTCDate()), monthOfYear: d.getUTCMonth() + 1 };
+  return null; // unknown frequency string
 }
 
 /**
@@ -199,7 +219,7 @@ export function buildRecurringPlan(snapshot: SourceSnapshot, mapping: Mapping): 
   const keyOf = (r: SourceRecurring) => `${r.type}|${r.categoryId ?? "?"}|${r.contactId ?? "?"}`;
 
   // 1) keep only importable records; remember a skip reason per key that has no importable record
-  interface Candidate { r: SourceRecurring; freq: RecurringRulePayload["frequency"]; target: QuidlyCategoryName }
+  interface Candidate { r: SourceRecurring; sched: ScheduleFields; target: QuidlyCategoryName }
   const importable: Candidate[] = [];
   const importableKeys = new Set<string>();
   const invalidByKey = new Map<string, SkippedRecurring>();
@@ -209,9 +229,9 @@ export function buildRecurringPlan(snapshot: SourceSnapshot, mapping: Mapping): 
       if (!invalidByKey.has(key)) invalidByKey.set(key, { id: r.id, reason: `non-GBP currency ${r.currencyCode}` });
       continue;
     }
-    const freq = mapFrequency(r.frequency, r.interval);
-    if (!freq) {
-      if (!invalidByKey.has(key)) invalidByKey.set(key, { id: r.id, reason: `unsupported frequency ${r.frequency}/interval ${r.interval}` });
+    const sched = mapSchedule(r.frequency, r.interval, r.startedAt);
+    if (!sched) {
+      if (!invalidByKey.has(key)) invalidByKey.set(key, { id: r.id, reason: `unsupported frequency ${r.frequency}` });
       continue;
     }
     const target = r.categoryId != null ? targetByCategoryId.get(r.categoryId) : null;
@@ -219,7 +239,7 @@ export function buildRecurringPlan(snapshot: SourceSnapshot, mapping: Mapping): 
       if (!invalidByKey.has(key)) invalidByKey.set(key, { id: r.id, reason: `no category target for category id ${r.categoryId}` });
       continue;
     }
-    importable.push({ r, freq, target });
+    importable.push({ r, sched, target });
     importableKeys.add(key);
   }
 
@@ -233,13 +253,12 @@ export function buildRecurringPlan(snapshot: SourceSnapshot, mapping: Mapping): 
 
   // 3) recency filter + build payloads
   for (const c of latest.values()) {
-    const { r, freq, target } = c;
+    const { r, sched, target } = c;
     if (new Date(r.startedAt) < cutoff) {
       skipped.push({ id: r.id, reason: `discontinued (last started ${r.startedAt.slice(0, 10)}, older than ${RECURRING_ACTIVE_MONTHS} months)` });
       continue;
     }
     const hasContact = r.contactId != null && contactIds.has(r.contactId);
-    const day = new Date(r.startedAt).getUTCDate();
     recurring.push({
       externalRef: `akaunting:recurring:${r.id}`,
       akauntingCompanyId: snapshot.companies[0]?.id ?? 1,
@@ -247,8 +266,12 @@ export function buildRecurringPlan(snapshot: SourceSnapshot, mapping: Mapping): 
       direction: r.type === "income" ? "in" : "out",
       categoryName: target,
       vendorExternalRef: hasContact ? `akaunting:contact:${r.contactId}` : null,
-      frequency: freq,
-      dayOfMonth: Math.min(Math.max(day, 1), 31), // Quidly's dateOn() clamps to each month's real last day
+      description: r.description ?? null,
+      intervalUnit: sched.intervalUnit,
+      intervalCount: sched.intervalCount,
+      dayOfWeek: sched.dayOfWeek,
+      dayOfMonth: sched.dayOfMonth,
+      monthOfYear: sched.monthOfYear,
       startDate: r.startedAt,
       lastGeneratedDate: asOf.toISOString(),
     });

@@ -98,7 +98,9 @@ describe("applyPlan", () => {
     expect(res1.recurringCreated).toBe(1);
     const rule = await prisma.recurringRule.findUnique({ where: { externalRef: "akaunting:recurring:16" } });
     expect(rule?.amountPence).toBe(75000);
-    expect(rule?.frequency).toBe("monthly");
+    expect(rule?.intervalUnit).toBe("MONTH");
+    expect(rule?.intervalCount).toBe(1);
+    expect(rule?.dayOfMonth).toBe(18); // 2025-12-18
     expect(rule?.direction).toBe("in");
     // idempotent
     const res2 = await applyPlan(prisma, snap, mapping(), {});
