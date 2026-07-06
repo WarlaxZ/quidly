@@ -141,10 +141,14 @@ export interface RecurringRulePayload {
   direction: "in" | "out";
   categoryName: QuidlyCategoryName;
   vendorExternalRef: string | null;
-  frequency: "monthly" | "quarterly" | "annual";
-  dayOfMonth: number;
+  description: string | null;
+  intervalUnit: "DAY" | "WEEK" | "MONTH" | "YEAR";
+  intervalCount: number;
+  dayOfWeek: number | null;
+  dayOfMonth: number | null;
+  monthOfYear: number | null;
   startDate: string;           // ISO
-  lastGeneratedDate: string;   // ISO — newest imported txn date (no backfill)
+  lastGeneratedDate: string;   // ISO -- newest imported txn date (no backfill)
 }
 
 export interface SkippedRecurring {

@@ -23,10 +23,11 @@ enum Direction {
   out
 }
 
-enum RecurFrequency {
-  monthly
-  quarterly
-  annual
+enum IntervalUnit {
+  DAY
+  WEEK
+  MONTH
+  YEAR
 }
 
 enum TxnSource {
@@ -110,21 +111,26 @@ model Transaction {
 }
 
 model RecurringRule {
-  id                String         @id @default(cuid())
+  id                String        @id @default(cuid())
   propertyId        String
-  property          Property       @relation(fields: [propertyId], references: [id])
+  property          Property      @relation(fields: [propertyId], references: [id])
   categoryId        String
-  category          Category       @relation(fields: [categoryId], references: [id])
+  category          Category      @relation(fields: [categoryId], references: [id])
   vendorId          String?
-  vendor            Vendor?        @relation(fields: [vendorId], references: [id])
+  vendor            Vendor?       @relation(fields: [vendorId], references: [id])
+  description       String?
   amountPence       Int
   direction         Direction
-  frequency         RecurFrequency
-  dayOfMonth        Int
+  intervalUnit      IntervalUnit
+  intervalCount     Int           @default(1)
+  dayOfWeek         Int?
+  dayOfMonth        Int?
+  monthOfYear       Int?
+  active            Boolean       @default(true)
   startDate         DateTime
   endDate           DateTime?
   lastGeneratedDate DateTime?
-  externalRef       String?        @unique
+  externalRef       String?       @unique
   transactions      Transaction[]
 }
 

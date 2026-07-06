@@ -1,36 +1,120 @@
-export type RecurFrequency = "monthly" | "quarterly" | "annual";
+export type IntervalUnit = "DAY" | "WEEK" | "MONTH" | "YEAR";
 
 export interface OccurrenceRule {
-  frequency: RecurFrequency;
-  dayOfMonth: number;
+  intervalUnit: IntervalUnit;
+  intervalCount: number;
+  dayOfWeek: number | null; // 0=Mon .. 6=Sun (WEEK units)
+  dayOfMonth: number | null; // 1..31; 31 acts as "last day" (MONTH/YEAR units)
+  monthOfYear: number | null; // 1..12 (YEAR units); falls back to startDate month when null
   startDate: Date;
   endDate: Date | null;
   lastGeneratedDate: Date | null;
 }
 
-const STEP_MONTHS: Record<RecurFrequency, number> = { monthly: 1, quarterly: 3, annual: 12 };
+const MAX_ITER_HARD = 100_000;
 
+/** Upper-bound iterations needed to reach asOf for this unit (over-estimates → never truncates). */
+function iterationBudget(rule: OccurrenceRule, start: Date, asOf: Date): number {
+  const days = Math.max(0, (asOf.getTime() - start.getTime()) / 86_400_000);
+  const count = Math.max(1, rule.intervalCount);
+  let periods: number;
+  switch (rule.intervalUnit) {
+    case "DAY": periods = days / count; break;
+    case "WEEK": periods = days / (7 * count); break;
+    case "MONTH": periods = days / (28 * count); break; // 28 = shortest month → safe over-estimate
+    case "YEAR": periods = days / (365 * count); break;
+  }
+  return Math.min(MAX_ITER_HARD, Math.ceil(periods) + 8);
+}
+
+function dateOnly(d: Date): Date {
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+}
+
+/** JS getUTCDay is 0=Sun..6=Sat; convert to 0=Mon..6=Sun. */
+function weekdayMon0(d: Date): number {
+  return (d.getUTCDay() + 6) % 7;
+}
+
+/** Clamp a Y/M/day to the month's real last day (handles day 31 in short months). */
 function dateOn(year: number, month: number, day: number): Date {
   const lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
   return new Date(Date.UTC(year, month, Math.min(day, lastDay)));
 }
 
-export function recurringOccurrences(rule: OccurrenceRule, asOf: Date): Date[] {
-  const step = STEP_MONTHS[rule.frequency];
+/**
+ * Occurrence dates from startDate up to and including asOf, honouring endDate
+ * and skipping anything on/before lastGeneratedDate.
+ */
+export function recurringOccurrences(rule: OccurrenceRule, asOf: Date, maxIter?: number): Date[] {
   const out: Date[] = [];
-  let year = rule.startDate.getUTCFullYear();
-  let month = rule.startDate.getUTCMonth();
-
-  for (let i = 0; i < 1200; i++) {
-    const occ = dateOn(year, month, rule.dayOfMonth);
-    if (occ > asOf) break;
-    if (rule.endDate && occ > rule.endDate) break;
-    const afterStart = occ >= rule.startDate;
+  const start = dateOnly(rule.startDate);
+  const cap = maxIter ?? iterationBudget(rule, start, asOf);
+  const emit = (occ: Date): "stop" | "cont" => {
+    if (occ > asOf) return "stop";
+    if (rule.endDate && occ > rule.endDate) return "stop";
+    const afterStart = occ >= start;
     const afterLast = !rule.lastGeneratedDate || occ > rule.lastGeneratedDate;
     if (afterStart && afterLast) out.push(occ);
-    month += step;
+    return "cont";
+  };
+
+  const count = Math.max(1, rule.intervalCount);
+
+  if (rule.intervalUnit === "DAY" || rule.intervalUnit === "WEEK") {
+    const stepDays = rule.intervalUnit === "WEEK" ? count * 7 : count;
+    let occ = new Date(start);
+    if (rule.intervalUnit === "WEEK") {
+      const target = rule.dayOfWeek ?? weekdayMon0(occ);
+      const delta = (target - weekdayMon0(occ) + 7) % 7;
+      occ.setUTCDate(occ.getUTCDate() + delta);
+    }
+    for (let i = 0; i < cap; i++) {
+      if (emit(occ) === "stop") break;
+      const next = new Date(occ);
+      next.setUTCDate(next.getUTCDate() + stepDays);
+      occ = next;
+    }
+    return out;
+  }
+
+  // MONTH / YEAR
+  const stepMonths = rule.intervalUnit === "YEAR" ? 12 * count : count;
+  const day = rule.dayOfMonth ?? rule.startDate.getUTCDate();
+  let year = rule.startDate.getUTCFullYear();
+  let month =
+    rule.intervalUnit === "YEAR" && rule.monthOfYear != null
+      ? rule.monthOfYear - 1
+      : rule.startDate.getUTCMonth();
+  for (let i = 0; i < cap; i++) {
+    const occ = dateOn(year, month, day);
+    if (emit(occ) === "stop") break;
+    month += stepMonths;
     year += Math.floor(month / 12);
-    month = month % 12;
+    month = ((month % 12) + 12) % 12;
   }
   return out;
+}
+
+/**
+ * The next `count` occurrences strictly after `after` (ignores lastGeneratedDate,
+ * honours endDate). Used for "next due" and the form's live preview.
+ */
+export function upcomingOccurrences(rule: OccurrenceRule, after: Date, count: number): Date[] {
+  const c = Math.max(1, rule.intervalCount);
+  const approxStepDays =
+    rule.intervalUnit === "DAY" ? c
+    : rule.intervalUnit === "WEEK" ? 7 * c
+    : rule.intervalUnit === "MONTH" ? 31 * c
+    : 366 * c;
+  const horizon = new Date(after.getTime() + (count + 2) * approxStepDays * 86_400_000);
+  const all = recurringOccurrences({ ...rule, lastGeneratedDate: null }, horizon);
+  const res: Date[] = [];
+  for (const d of all) {
+    if (d > after) {
+      res.push(d);
+      if (res.length >= count) break;
+    }
+  }
+  return res;
 }
