@@ -61,13 +61,15 @@ model Property {
 }
 
 model Vendor {
-  id                String        @id @default(cuid())
+  id                String          @id @default(cuid())
   name              String
-  contactDetails    String?
+  email             String?
+  phone             String?
+  address           String?
   notes             String?
-  externalRef       String?       @unique
+  externalRef       String?         @unique
   defaultCategoryId String?
-  defaultCategory   Category?     @relation(fields: [defaultCategoryId], references: [id])
+  defaultCategory   Category?       @relation(fields: [defaultCategoryId], references: [id])
   transactions      Transaction[]
   recurringRules    RecurringRule[]
 }

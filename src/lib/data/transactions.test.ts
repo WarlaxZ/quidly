@@ -69,4 +69,54 @@ describe("transactions data layer", () => {
     const all = await listTransactions(property.id);
     expect(all.every((t) => t.source === "imported")).toBe(true);
   });
+
+  it("includes the linked attachment on getTransaction", async () => {
+    const property = await getOrCreateDefaultProperty();
+    const categoryId = await rentCategoryId();
+    const { createAttachment } = await import("./attachments");
+    const attachment = await createAttachment({
+      filePath: "/tmp/receipt.pdf",
+      originalName: "receipt.pdf",
+      extractedData: null,
+    });
+    const t = await createTransaction({
+      propertyId: property.id,
+      categoryId,
+      date: new Date("2025-06-01"),
+      amountPence: 5000,
+      direction: "out",
+      attachmentId: attachment.id,
+    });
+    const { getTransaction } = await import("./transactions");
+    const fetched = await getTransaction(t.id);
+    expect(fetched?.attachment?.originalName).toBe("receipt.pdf");
+  });
+
+  it("clears an attachment when updated with attachmentId null but leaves it when the key is omitted", async () => {
+    const property = await getOrCreateDefaultProperty();
+    const categoryId = await rentCategoryId();
+    const { createAttachment } = await import("./attachments");
+    const attachment = await createAttachment({
+      filePath: "/tmp/receipt2.pdf",
+      originalName: "receipt2.pdf",
+      extractedData: null,
+    });
+    const t = await createTransaction({
+      propertyId: property.id,
+      categoryId,
+      date: new Date("2025-06-01"),
+      amountPence: 5000,
+      direction: "out",
+      attachmentId: attachment.id,
+    });
+    const { getTransaction } = await import("./transactions");
+
+    // Omitting attachmentId leaves it unchanged
+    await updateTransaction(t.id, { amountPence: 6000 });
+    expect((await getTransaction(t.id))?.attachmentId).toBe(attachment.id);
+
+    // Passing null clears it
+    await updateTransaction(t.id, { attachmentId: null });
+    expect((await getTransaction(t.id))?.attachmentId).toBeNull();
+  });
 });

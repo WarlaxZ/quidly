@@ -117,7 +117,7 @@ describe("buildPlan", () => {
   it("builds vendor and transaction payloads for GBP transactions", () => {
     const plan = buildPlan(baseSnapshot(), baseMapping());
     expect(plan.vendors).toEqual([
-      { externalRef: "akaunting:contact:7", name: "Acme Plumbing", contactDetails: null },
+      { externalRef: "akaunting:contact:7", name: "Acme Plumbing", email: null, phone: null, address: null },
     ]);
     expect(plan.transactions).toEqual([
       {
@@ -154,11 +154,11 @@ describe("buildPlan", () => {
     expect(plan.vendors).toEqual([]);
   });
 
-  it("builds contactDetails from email/phone/address when present", () => {
+  it("maps email/phone/address through to the vendor payload separately", () => {
     const s = baseSnapshot();
     s.contacts[0] = { id: 7, name: "Acme Plumbing", type: "vendor", email: "a@b.com", phone: "0123", address: "1 High St" };
     const plan = buildPlan(s, baseMapping());
-    expect(plan.vendors[0].contactDetails).toBe("a@b.com | 0123 | 1 High St");
+    expect(plan.vendors[0]).toMatchObject({ email: "a@b.com", phone: "0123", address: "1 High St" });
   });
 
   it("skips a GBP transaction that has no category", () => {

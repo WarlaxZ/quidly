@@ -31,7 +31,7 @@ export function listTransactionsForTaxYear(propertyId: string, taxYear: string) 
   });
 }
 export function getTransaction(id: string) {
-  return prisma.transaction.findUnique({ where: { id }, include: { category: true, vendor: true } });
+  return prisma.transaction.findUnique({ where: { id }, include: { category: true, vendor: true, attachment: true } });
 }
 export function createTransaction(input: TransactionInput) {
   return prisma.transaction.create({ data: input });
