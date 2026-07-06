@@ -97,7 +97,7 @@ export default async function RecurringPage({
                         <td>
                           <div className="font-medium text-ink">
                             {r.description ?? r.category.name}
-                            {!r.active && <span className="ml-2 rounded-md bg-subtle px-2 py-0.5 text-xs text-muted">Paused</span>}
+                            {!r.active && <span className="ml-2 rounded-md bg-surface-sunk px-2 py-0.5 text-xs text-muted">Paused</span>}
                           </div>
                           <div className="text-sm text-muted">
                             {r.vendor?.name ? `${r.vendor.name} · ` : ""}{r.category.name}
@@ -110,11 +110,11 @@ export default async function RecurringPage({
                         </td>
                         <td className="text-right">
                           <div className="flex justify-end gap-3">
-                            <Link href={`/recurring/${r.id}/edit`} className="link">Edit</Link>
+                            <Link href={`/recurring/${r.id}/edit`} className="btn btn-ghost !px-3 !py-1.5 text-xs">Edit</Link>
                             <form action={setActiveAction}>
                               <input type="hidden" name="id" value={r.id} />
                               <input type="hidden" name="active" value={r.active ? "false" : "true"} />
-                              <button type="submit" className="link">{r.active ? "Pause" : "Resume"}</button>
+                              <button type="submit" className="btn btn-ghost !px-3 !py-1.5 text-xs">{r.active ? "Pause" : "Resume"}</button>
                             </form>
                             <form action={deleteRecurringAction}>
                               <input type="hidden" name="id" value={r.id} />

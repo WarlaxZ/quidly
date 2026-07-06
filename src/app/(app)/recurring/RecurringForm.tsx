@@ -148,7 +148,7 @@ export function RecurringForm({
               type="button"
               key={p.key}
               onClick={() => choosePreset(p.key)}
-              className={`rounded-md px-3 py-1.5 text-sm ${presetKey === p.key ? "bg-ink text-white" : "bg-subtle text-muted"}`}
+              className={`rounded-md px-3 py-1.5 text-sm ${presetKey === p.key ? "bg-ink text-white" : "bg-surface-sunk text-muted"}`}
             >
               {p.label}
             </button>
@@ -176,7 +176,7 @@ export function RecurringForm({
 
       {/* Conditional anchor */}
       {unit === "WEEK" && (
-        <div className="rounded-lg border border-line bg-subtle/40 p-3">
+        <div className="rounded-lg border border-line bg-surface-sunk/40 p-3">
           <span className="label">On which day?</span>
           <div className="flex flex-wrap gap-1">
             {WEEKDAYS.map((d, i) => (
@@ -186,7 +186,7 @@ export function RecurringForm({
         </div>
       )}
       {(unit === "MONTH" || unit === "YEAR") && (
-        <div className="flex flex-wrap items-end gap-3 rounded-lg border border-line bg-subtle/40 p-3">
+        <div className="flex flex-wrap items-end gap-3 rounded-lg border border-line bg-surface-sunk/40 p-3">
           {unit === "YEAR" && (
             <label className="min-w-[8rem]">
               <span className="label">Month</span>
@@ -215,7 +215,7 @@ export function RecurringForm({
       </div>
 
       {preview.length > 0 && (
-        <div className="rounded-lg bg-subtle/60 px-3 py-2 text-sm text-muted">
+        <div className="rounded-lg bg-surface-sunk/60 px-3 py-2 text-sm text-muted">
           <span className="font-medium text-ink">Next dates:</span> {preview.map(fmt).join(" · ")} …
         </div>
       )}
