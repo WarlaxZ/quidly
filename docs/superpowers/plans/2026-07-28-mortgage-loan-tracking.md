@@ -874,8 +874,7 @@ Expected: FAIL — `Failed to resolve import "./advice"`.
 
 ```ts
 import { propertySurchargeBps } from "../tax/bands";
-import type { Region } from "../tax/types";
-import type { LoanKind } from "./schedule";
+import type { Region, LoanKind } from "../tax/types";
 
 /** The Section 24 reducer is the property basic rate: 20% plus any year/region surcharge. */
 const BASIC_REDUCER_BPS = 2000;
@@ -963,7 +962,8 @@ git commit -m "feat(loans): effective cost of debt, capital callout, term-end wa
 import "server-only";
 import { prisma } from "../db";
 import { recurringOccurrences, type IntervalUnit, type OccurrenceRule } from "../recurring/occurrences";
-import { derivePayment, daysBetween, type LoanKind, type LoanTerms } from "../loans/schedule";
+import { derivePayment, daysBetween, type LoanTerms } from "../loans/schedule";
+import type { LoanKind } from "../tax/types";
 import { INTEREST_CATEGORY_NAME, CAPITAL_CATEGORY_NAME } from "../loans/categories";
 import { taxYearRange } from "../tax/taxYear";
 
@@ -1465,7 +1465,7 @@ import {
 } from "../../../lib/data/loans";
 import { parseAmountToPence } from "../../../lib/money/parseAmount";
 import type { IntervalUnit } from "../../../lib/recurring/occurrences";
-import type { LoanKind } from "../../../lib/loans/schedule";
+import type { LoanKind } from "../../../lib/tax/types";
 import { requireSession } from "../../../lib/auth/session";
 
 const UNITS: IntervalUnit[] = ["DAY", "WEEK", "MONTH", "YEAR"];
@@ -2029,7 +2029,7 @@ import { loanAdvice } from "../../../../lib/loans/advice";
 import { getOrCreateProfile } from "../../../../lib/data/taxProfile";
 import { latestConfiguredTaxYear } from "../../../../lib/tax/taxYear";
 import { formatGBP } from "../../../../lib/tax/money";
-import type { LoanKind } from "../../../../lib/loans/schedule";
+import type { LoanKind } from "../../../../lib/tax/types";
 import { PageHeader } from "../../_ui/PageHeader";
 import { Banner } from "../../_ui/Banner";
 import { generateLoanPaymentsAction, setActualInterestAction } from "../actions";
