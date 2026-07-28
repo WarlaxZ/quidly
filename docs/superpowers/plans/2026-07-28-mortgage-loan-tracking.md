@@ -1721,11 +1721,10 @@ git commit -m "feat(loans): interest override and year-end statement reconcile"
 "use server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { createLoan, updateLoan, deleteLoan, setLoanActive, type LoanInput } from "../../../lib/data/loans";
 import {
-  createLoan, updateLoan, deleteLoan, setLoanActive,
   generateLoanPayments, setActualInterest, applyYearVariance,
-  type LoanInput,
-} from "../../../lib/data/loans";
+} from "../../../lib/data/loanGeneration";
 import { parseAmountToPence } from "../../../lib/money/parseAmount";
 import type { IntervalUnit } from "../../../lib/recurring/occurrences";
 import type { LoanKind } from "../../../lib/tax/types";
@@ -2287,7 +2286,8 @@ git commit -m "feat(loans): loans list and add-loan pages"
 ```tsx
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getLoan, capitalNoReliefPence } from "../../../../lib/data/loans";
+import { getLoan } from "../../../../lib/data/loans";
+import { capitalNoReliefPence } from "../../../../lib/data/loanGeneration";
 import { loanAdvice } from "../../../../lib/loans/advice";
 import { getOrCreateProfile } from "../../../../lib/data/taxProfile";
 import { latestConfiguredTaxYear } from "../../../../lib/tax/taxYear";
@@ -2534,7 +2534,8 @@ export default async function EditLoanPage({
 ```tsx
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getLoan, reconcileYear } from "../../../../../lib/data/loans";
+import { getLoan } from "../../../../../lib/data/loans";
+import { reconcileYear } from "../../../../../lib/data/loanGeneration";
 import { latestConfiguredTaxYear, isConfiguredTaxYear, taxYearOptions } from "../../../../../lib/tax/taxYear";
 import { formatGBP } from "../../../../../lib/tax/money";
 import { PageHeader } from "../../../_ui/PageHeader";
