@@ -1,8 +1,5 @@
-import { propertySurchargeBps } from "../tax/bands";
+import { propertyReducerBps } from "../tax/bands";
 import type { Region, LoanKind } from "../tax/types";
-
-/** The Section 24 reducer is the property basic rate: 20% plus any year/region surcharge. */
-const BASIC_REDUCER_BPS = 2000;
 
 export interface LoanAdviceInput {
   annualRateBps: number;
@@ -18,7 +15,7 @@ export interface LoanAdviceInput {
 
 interface LoanAdviceCommon {
   nominalRateBps: number;
-  /** This tax year's capital repayments — money that attracted no relief at all. */
+  /** See LoanAdviceInput.capitalNoReliefPence. */
   capitalNoReliefPence: number;
   termEnd: { date: Date; balanceDuePence: number } | null;
 }
@@ -68,7 +65,7 @@ export function loanAdvice(input: LoanAdviceInput): LoanAdvice {
     };
   }
 
-  const reducerBps = BASIC_REDUCER_BPS + propertySurchargeBps(input.taxYear, input.region);
+  const reducerBps = propertyReducerBps(input.taxYear, input.region);
   return {
     nominalRateBps: input.annualRateBps,
     reducerBps,
