@@ -27,9 +27,11 @@ describe("loan categories are seeded with the kinds the tax engine relies on", (
 
   it("keeps capital repayment distinct from capital improvements", async () => {
     // Improvements are deductible against a future capital gain (TCGA 1992 s.38);
-    // loan principal never is. They must not be the same category.
-    expect(CAPITAL_CATEGORY_NAME).not.toBe("Capital improvements");
+    // loan principal never is. They must be separate rows, not one reused category.
+    const repayment = await prisma.category.findUnique({ where: { name: CAPITAL_CATEGORY_NAME } });
     const improvements = await prisma.category.findUnique({ where: { name: "Capital improvements" } });
+    expect(repayment).not.toBeNull();
     expect(improvements).not.toBeNull();
+    expect(repayment!.id).not.toBe(improvements!.id);
   });
 });

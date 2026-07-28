@@ -2,6 +2,10 @@ import "dotenv/config";
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 import { PrismaClient } from "@prisma/client";
 import type { CategoryKind } from "@prisma/client";
+import {
+  INTEREST_CATEGORY_NAME, INTEREST_CATEGORY_KIND,
+  CAPITAL_CATEGORY_NAME, CAPITAL_CATEGORY_KIND,
+} from "../src/lib/loans/categories";
 
 const dbUrl = process.env.DATABASE_URL ?? "file:./dev.db";
 const adapter = new PrismaBetterSqlite3({ url: dbUrl });
@@ -24,8 +28,8 @@ const categories: CategorySeed[] = [
   { name: "Other allowable property expenses", kind: "expense", sa105Box: "29", allowable: true },
   { name: "Travel & mileage", kind: "expense", sa105Box: "29", allowable: true },
   { name: "Use of home", kind: "expense", sa105Box: "29", allowable: true },
-  { name: "Mortgage / loan interest", kind: "finance", sa105Box: "44", allowable: true },
-  { name: "Loan capital repayment", kind: "capital", sa105Box: null, allowable: false },
+  { name: INTEREST_CATEGORY_NAME, kind: INTEREST_CATEGORY_KIND, sa105Box: "44", allowable: true },
+  { name: CAPITAL_CATEGORY_NAME, kind: CAPITAL_CATEGORY_KIND, sa105Box: null, allowable: false },
   { name: "Capital improvements", kind: "capital", sa105Box: null, allowable: false },
 ];
 
