@@ -206,10 +206,42 @@ describe("SA105 treatment of a split mortgage payment", () => {
 
   it("excludes capital repayment from profit entirely", () => {
     const txns = yearOfSplitPayments();
+    const capitalPence = txns.filter((t) => t.categoryKind === "capital")
+      .reduce((sum, t) => sum + t.amountPence, 0);
+    const interestPence = txns.filter((t) => t.categoryKind === "finance")
+      .reduce((sum, t) => sum + t.amountPence, 0);
+
+    // Guard against this test going vacuous: the capital rows must actually be present
+    // and material, and together with interest must account for every penny debited.
+    expect(capitalPence).toBeGreaterThan(700_000);
+    expect(capitalPence + interestPence).toBe(12 * 75_000);
+
     const { profitPence, expensesPence } = computeProfit([RENT, ...txns]);
     // Capital is neither an expense nor a finance cost — profit is rent, untouched.
     expect(expensesPence).toBe(0);
     expect(profitPence).toBe(1_200_000);
+  });
+
+  // The assertion above would pass even if the capital rows were simply absent, because
+  // computeProfit ignores them for two independent reasons (allowable: false, and no
+  // "capital" arm in its categoryKind switch). This mutation test is what actually proves
+  // the categorisation is load-bearing: recategorise capital as a deductible expense and
+  // the profit must move by exactly that amount.
+  it("would wrongly reduce profit if capital were miscategorised as an expense", () => {
+    const txns = yearOfSplitPayments();
+    const miscategorised = txns.map((t) =>
+      t.categoryKind === "capital"
+        ? { ...t, categoryKind: "expense" as const, allowable: true, sa105Box: "29" }
+        : t,
+    );
+
+    const right = computeProfit([RENT, ...txns]);
+    const wrong = computeProfit([RENT, ...miscategorised]);
+
+    expect(right.expensesPence).toBe(0);
+    expect(wrong.expensesPence).toBeGreaterThan(700_000);
+    // The whole difference is the capital that must never have been deducted.
+    expect(right.profitPence - wrong.profitPence).toBe(wrong.expensesPence);
   });
 
   it("would have overclaimed by over £7,000 if the payment were filed unsplit", () => {

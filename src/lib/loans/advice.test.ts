@@ -36,7 +36,9 @@ describe("loanAdvice", () => {
     const a = loanAdvice({ ...BASE, ownershipType: "company" });
     expect(a.reliefBasis).toBe("fullDeduction");
     expect(a.reducerBps).toBeNull();
-    expect(a.effectiveRateBps).toBe(270); // nominal; CT relief depends on the company's rate
+    // No single "effective rate" exists: the real post-relief cost depends on the
+    // company's corporation tax rate, which loanAdvice does not know.
+    expect(a.effectiveRateBps).toBeNull();
   });
 
   it("passes through the capital that attracted no relief", () => {
