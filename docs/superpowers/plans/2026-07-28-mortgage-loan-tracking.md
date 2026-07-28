@@ -12,6 +12,48 @@
 
 ---
 
+## AMENDMENT — `derivePayment` takes an options object
+
+Raised in review of Tasks 3-4 and applied before Task 7. The original signature was
+positional: `derivePayment({ terms: terms, openingBalancePence: openingBalancePence, daysInPeriod: daysInPeriod, paidPence: paidPence, actualInterestPence: actualInterestPence? })`
+— three adjacent `number` parameters, two of them pence of similar magnitude. TypeScript
+cannot catch a transposition between same-typed positional arguments, and Task 7 calls this
+in a loop. The failure mode is a silently wrong SA105 figure, which is the exact class of bug
+this feature exists to prevent.
+
+The signature is now:
+
+```ts
+export interface PaymentInput {
+  terms: LoanTerms;
+  openingBalancePence: number;
+  /** Days since the previous payment date, or since the loan's startDate for the first. */
+  daysInPeriod: number;
+  /** The amount that ACTUALLY left the bank this period — not `terms.scheduledPaymentPence`,
+   *  which is schedule metadata and may differ when the landlord overpays. */
+  paidPence: number;
+  /** The lender's real figure, when reconciling against a statement. */
+  actualInterestPence?: number | null;
+}
+
+export function derivePayment(input: PaymentInput): DerivedPayment;
+```
+
+Two related changes landed with it:
+
+- **`LoanKind` moved to `src/lib/tax/types.ts`**, next to the existing hand-rolled
+  `CategoryKind`, so "where do domain-kind unions live" has one answer. `schedule.ts` imports
+  it. (Prisma also generates a `LoanKind` enum; the hand-rolled union is the pure-function
+  layer's copy, mirroring the established `CategoryKind` arrangement.)
+- **Thrown messages carry no pence values.** Server actions in this repo surface caught
+  `Error.message` straight to the user via `?error=`, so a message reading `"Interest of
+  16281p exceeds the payment of 75000p"` would show a landlord `16281p` rather than `£162.81`.
+  Messages are now pence-free; formatting stays out of the calculation module.
+
+All call sites below reflect the amended signature.
+
+---
+
 ## File structure
 
 ```
@@ -463,7 +505,7 @@ const INTEREST_ONLY: LoanTerms = { kind: "interestOnly", annualRateBps: 270, sch
 describe("derivePayment", () => {
   // The bug this whole feature exists to prevent: £750 paid, only ~£163 is deductible.
   it("splits a £750 payment on a £71k interest-only loan at 2.7%", () => {
-    const d = derivePayment(INTEREST_ONLY, 7_100_000, 31, 75_000);
+    const d = derivePayment({ terms: INTEREST_ONLY, openingBalancePence: 7_100_000, daysInPeriod: 31, paidPence: 75_000 });
     expect(d.computedInterestPence).toBe(16_281);
     expect(d.interestPence).toBe(16_281);
     expect(d.capitalPence).toBe(58_719);      // £587.19 — no tax relief whatsoever
@@ -472,25 +514,25 @@ describe("derivePayment", () => {
   });
 
   it("keeps interest + capital equal to the amount paid", () => {
-    const d = derivePayment(INTEREST_ONLY, 7_100_000, 31, 75_000);
+    const d = derivePayment({ terms: INTEREST_ONLY, openingBalancePence: 7_100_000, daysInPeriod: 31, paidPence: 75_000 });
     expect(d.interestPence + d.capitalPence).toBe(75_000);
   });
 
   it("uses the actual interest override in place of the computed figure", () => {
-    const d = derivePayment(INTEREST_ONLY, 7_100_000, 31, 75_000, 16_000);
+    const d = derivePayment({ terms: INTEREST_ONLY, openingBalancePence: 7_100_000, daysInPeriod: 31, paidPence: 75_000, actualInterestPence: 16_000 });
     expect(d.computedInterestPence).toBe(16_281);  // snapshot preserved
     expect(d.interestPence).toBe(16_000);
     expect(d.capitalPence).toBe(59_000);
   });
 
   it("treats a payment equal to the interest as pure interest, no capital", () => {
-    const d = derivePayment(INTEREST_ONLY, 7_100_000, 31, 16_281);
+    const d = derivePayment({ terms: INTEREST_ONLY, openingBalancePence: 7_100_000, daysInPeriod: 31, paidPence: 16_281 });
     expect(d.capitalPence).toBe(0);
     expect(d.closingBalancePence).toBe(7_100_000);
   });
 
   it("clamps capital at the outstanding balance and flags full redemption", () => {
-    const d = derivePayment(INTEREST_ONLY, 50_000, 31, 75_000);
+    const d = derivePayment({ terms: INTEREST_ONLY, openingBalancePence: 50_000, daysInPeriod: 31, paidPence: 75_000 });
     expect(d.capitalPence).toBe(50_000);
     expect(d.closingBalancePence).toBe(0);
     expect(d.fullyRedeemed).toBe(true);
@@ -498,7 +540,7 @@ describe("derivePayment", () => {
 
   it("flags full redemption when capital exactly clears the balance", () => {
     const interest = computeInterestPence(58_719, 270, 31);
-    const d = derivePayment(INTEREST_ONLY, 58_719, 31, 58_719 + interest);
+    const d = derivePayment({ terms: INTEREST_ONLY, openingBalancePence: 58_719, daysInPeriod: 31, paidPence: 58_719 + interest });
     expect(d.closingBalancePence).toBe(0);
     expect(d.fullyRedeemed).toBe(true);
   });
@@ -506,22 +548,22 @@ describe("derivePayment", () => {
   // Silently absorbing this would understate box 44's sibling — the capital line — and
   // overstate relief. Refuse instead.
   it("throws when interest exceeds the payment", () => {
-    expect(() => derivePayment(INTEREST_ONLY, 7_100_000, 31, 10_000)).toThrow(/exceeds the payment/);
+    expect(() => derivePayment({ terms: INTEREST_ONLY, openingBalancePence: 7_100_000, daysInPeriod: 31, paidPence: 10_000 })).toThrow(/exceeds the payment/);
   });
 
   it("throws on a negative interest override", () => {
-    expect(() => derivePayment(INTEREST_ONLY, 7_100_000, 31, 75_000, -1)).toThrow(/cannot be negative/);
+    expect(() => derivePayment({ terms: INTEREST_ONLY, openingBalancePence: 7_100_000, daysInPeriod: 31, paidPence: 75_000, actualInterestPence: -1 })).toThrow(/cannot be negative/);
   });
 
   it("accrues no interest over a zero-day first period", () => {
-    const d = derivePayment(INTEREST_ONLY, 7_100_000, 0, 75_000);
+    const d = derivePayment({ terms: INTEREST_ONLY, openingBalancePence: 7_100_000, daysInPeriod: 0, paidPence: 75_000 });
     expect(d.interestPence).toBe(0);
     expect(d.capitalPence).toBe(75_000);
   });
 
   it("applies the same formula to a repayment loan", () => {
     const terms: LoanTerms = { kind: "repayment", annualRateBps: 500, scheduledPaymentPence: 100_000 };
-    const d = derivePayment(terms, 10_000_000, 30, 100_000);
+    const d = derivePayment({ terms: terms, openingBalancePence: 10_000_000, daysInPeriod: 30, paidPence: 100_000 });
     expect(d.computedInterestPence).toBe(41_096);
     expect(d.capitalPence).toBe(58_904);
   });
@@ -538,12 +580,26 @@ Expected: FAIL — `derivePayment` is not exported.
 Append to `src/lib/loans/schedule.ts`:
 
 ```ts
-export type LoanKind = "interestOnly" | "repayment";
+import type { LoanKind } from "../tax/types";
 
 export interface LoanTerms {
   kind: LoanKind;
   annualRateBps: number;
+  /** Schedule metadata only. The amount actually debited is `PaymentInput.paidPence` —
+   *  never pass this into `derivePayment` as the amount paid, because a landlord who
+   *  overpays debits more than the schedule says. */
   scheduledPaymentPence: number;
+}
+
+export interface PaymentInput {
+  terms: LoanTerms;
+  openingBalancePence: number;
+  /** Days since the previous payment date, or since the loan's startDate for the first. */
+  daysInPeriod: number;
+  /** The amount that ACTUALLY left the bank this period. */
+  paidPence: number;
+  /** The lender's real figure, when reconciling against a statement. */
+  actualInterestPence?: number | null;
 }
 
 export interface DerivedPayment {
@@ -564,13 +620,19 @@ export interface DerivedPayment {
  *   capital = paid - interest
  * `kind` therefore only drives the interest-only term-end warning, not the maths.
  */
-export function derivePayment(
-  terms: LoanTerms,
-  openingBalancePence: number,
-  daysInPeriod: number,
-  paidPence: number,
-  actualInterestPence?: number | null,
-): DerivedPayment {
+export function derivePayment({
+  terms,
+  openingBalancePence,
+  daysInPeriod,
+  paidPence,
+  actualInterestPence,
+}: PaymentInput): DerivedPayment {
+  if (openingBalancePence < 0) {
+    // Surfaced rather than clamped: a negative balance means the caller's balance chain
+    // has desynced, and silently coercing it to zero would hide that behind a plausible figure.
+    throw new Error("The loan's outstanding balance cannot be negative.");
+  }
+
   const computedInterestPence = computeInterestPence(
     openingBalancePence,
     terms.annualRateBps,
@@ -582,16 +644,17 @@ export function derivePayment(
     throw new Error("Interest cannot be negative.");
   }
   if (interestPence > paidPence) {
+    // Messages reach the user verbatim via `?error=`, so they carry no raw pence.
     throw new Error(
-      `Interest of ${interestPence}p exceeds the payment of ${paidPence}p. ` +
-        `Record this as an arrears period, or correct the rate.`,
+      "Interest for this period exceeds the payment. " +
+        "Record this as an arrears period, or correct the rate.",
     );
   }
 
   let capitalPence = paidPence - interestPence;
   let fullyRedeemed = false;
   if (capitalPence >= openingBalancePence) {
-    capitalPence = Math.max(0, openingBalancePence);
+    capitalPence = openingBalancePence;
     fullyRedeemed = true;
   }
 
@@ -646,12 +709,12 @@ function yearOfSplitPayments(): TaxTxn[] {
   let prev = new Date("2026-04-01T00:00:00Z");
   for (let m = 0; m < 12; m++) {
     const date = new Date(Date.UTC(2026, 4 + m, 1));
-    const d = derivePayment(
-      { kind: "interestOnly", annualRateBps: 270, scheduledPaymentPence: 75_000 },
-      balance,
-      daysBetween(prev, date),
-      75_000,
-    );
+    const d = derivePayment({
+      terms: { kind: "interestOnly", annualRateBps: 270, scheduledPaymentPence: 75_000 },
+      openingBalancePence: balance,
+      daysInPeriod: daysBetween(prev, date),
+      paidPence: 75_000,
+    });
     txns.push({ date, amountPence: d.interestPence, direction: "out", categoryKind: "finance", allowable: true, sa105Box: "44" });
     txns.push({ date, amountPence: d.capitalPence, direction: "out", categoryKind: "capital", allowable: false, sa105Box: null });
     balance = d.closingBalancePence;
@@ -1026,12 +1089,12 @@ export async function generateLoanPayments(loanId: string, asOf: Date): Promise<
 
   for (const date of dates) {
     if (balance <= 0) break;
-    const d = derivePayment(
-      termsOf(loan),
-      balance,
-      daysBetween(boundary, date),
-      loan.scheduledPaymentPence,
-    );
+    const d = derivePayment({
+      terms: termsOf(loan),
+      openingBalancePence: balance,
+      daysInPeriod: daysBetween(boundary, date),
+      paidPence: loan.scheduledPaymentPence,
+    });
 
     await prisma.$transaction(async (tx) => {
       const payment = await tx.loanPayment.create({
@@ -1278,13 +1341,13 @@ export async function setActualInterest(paymentId: string, actualInterestPence: 
   });
   if (!payment) throw new Error("That payment could not be found.");
 
-  const d = derivePayment(
-    termsOf(payment.loan),
-    payment.openingBalancePence,
-    0, // irrelevant: the override supplies the interest
-    payment.paidPence,
+  const d = derivePayment({
+    terms: termsOf(payment.loan),
+    openingBalancePence: payment.openingBalancePence,
+    daysInPeriod: 0, // irrelevant: the override supplies the interest
+    paidPence: payment.paidPence,
     actualInterestPence,
-  );
+  });
 
   const { interestId, capitalId } = await loanCategoryIds();
 
