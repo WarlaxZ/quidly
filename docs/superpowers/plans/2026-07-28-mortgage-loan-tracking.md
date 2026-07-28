@@ -1102,7 +1102,14 @@ function toLoanOccurrenceRule(loan: {
     monthOfYear: loan.monthOfYear,
     startDate: loan.startDate,
     endDate: loan.termEndDate,
-    lastGeneratedDate: loan.lastGeneratedDate,
+    // A loan's startDate is the accrual ORIGIN, not a payment date: openingBalancePence is
+    // defined as the balance *as at* that date. recurringOccurrences() emits startDate itself
+    // when the schedule's day matches it (correct for a RecurringRule, where a rent rule
+    // starting on the 1st should pay on the 1st) — but for a loan that yields a phantom
+    // payment with zero elapsed days, zero interest and the whole amount as capital.
+    // Seeding lastGeneratedDate with startDate reuses that function's existing
+    // "skip anything on or before" rule to mean "first payment strictly after the origin".
+    lastGeneratedDate: loan.lastGeneratedDate ?? loan.startDate,
   };
 }
 
@@ -1132,8 +1139,8 @@ async function loanCategoryIds(): Promise<{ interestId: string; capitalId: strin
  * `@@unique([loanId, date])` is the backstop, exactly as recurring rules work.
  *
  * Interest accrues from the previous payment date, or from `startDate` for the first
- * payment. A first payment falling exactly on `startDate` therefore accrues nothing and is
- * all capital — set `startDate` to the day after the previous payment to avoid that.
+ * payment. The first payment is the first scheduled date strictly *after* `startDate`, so
+ * it always has a non-zero accrual period — see `toLoanOccurrenceRule` for why.
  */
 export async function generateLoanPayments(loanId: string, asOf: Date): Promise<number> {
   const loan = await prisma.loan.findUnique({ where: { id: loanId } });
@@ -1889,7 +1896,7 @@ export function LoanForm({
         <label className="block">
           <span className="label">First payment from</span>
           <input name="startDate" type="date" required className="field" defaultValue={iso(values?.startDate ?? null)} />
-          <span className="mt-1 block text-xs text-muted">Interest accrues from this date. Set it to the day after your last payment.</span>
+          <span className="mt-1 block text-xs text-muted">The balance above is as at this date, and interest accrues from it. Your first payment will be the next scheduled date after it.</span>
         </label>
 
         <label className="block">
@@ -2795,8 +2802,9 @@ CSV import (15–16), docs and verification (17).
 **Known limitations, all documented in code comments:**
 - Overriding a mid-year payment's interest does not cascade to later opening balances.
   `applyYearVariance` targets the year's final payment to keep this contained.
-- A first payment falling exactly on `startDate` accrues no interest and is all capital;
-  the form's help text tells the user to set `startDate` to the day after their last payment.
+- `startDate` is the accrual origin, not a payment date. The first payment is the first
+  scheduled date strictly after it, so no payment ever has a zero-day accrual period.
+  (`derivePayment` still handles `daysInPeriod: 0` defensively, and that is unit-tested.)
 - The list page's Balance column shows the entered opening balance; the live balance is on
   the detail page.
 
