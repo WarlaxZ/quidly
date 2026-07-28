@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
-  createLoan, listLoans, deleteLoan, generateLoanPayments,
-  setActualInterest, reconcileYear, applyYearVariance, capitalNoReliefPence,
+  createLoan, listLoans, deleteLoan,
   type LoanInput,
 } from "./loans";
+import {
+  generateLoanPayments, setActualInterest, reconcileYear, applyYearVariance, capitalNoReliefPence,
+} from "./loanGeneration";
 import { getOrCreateDefaultProperty } from "./property";
 import { resetDb } from "../../../test/setup/resetDb";
 import { prisma } from "../db";
