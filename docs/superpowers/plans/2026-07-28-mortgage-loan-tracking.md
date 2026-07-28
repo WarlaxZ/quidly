@@ -218,16 +218,39 @@ export const CAPITAL_CATEGORY_KIND: CategoryKind = "capital";
 
 - [ ] **Step 2: Add the category to the seed**
 
-In `prisma/seed.ts`, add to the `categories` array immediately after the
-`"Mortgage / loan interest"` entry:
+`prisma/seed.ts` must **import** the constants rather than repeat the literals, so seed-vs-
+constant drift is impossible by construction rather than merely detected by a test. This is
+viable: the seed runs via `npx tsx prisma/seed.ts` (see `prisma.config.ts`), `src/lib/tax/types.ts`
+has no imports of its own, and `import type` is erased at compile time — so nothing
+Next.js-specific is dragged into the script. `scripts/set-password.ts` and
+`scripts/migrate-akaunting/report.ts` already import from `src/lib/` under `tsx`, so this is
+an established pattern here.
+
+Add the import at the top of `prisma/seed.ts`:
 
 ```ts
-  { name: "Loan capital repayment", kind: "capital", sa105Box: null, allowable: false },
+import {
+  INTEREST_CATEGORY_NAME, INTEREST_CATEGORY_KIND,
+  CAPITAL_CATEGORY_NAME, CAPITAL_CATEGORY_KIND,
+} from "../src/lib/loans/categories";
+```
+
+Then replace the existing interest entry and add the capital entry beneath it:
+
+```ts
+  { name: INTEREST_CATEGORY_NAME, kind: INTEREST_CATEGORY_KIND, sa105Box: "44", allowable: true },
+  { name: CAPITAL_CATEGORY_NAME, kind: CAPITAL_CATEGORY_KIND, sa105Box: null, allowable: false },
 ```
 
 Do **not** reuse `Capital improvements` — that category is genuine enhancement expenditure
 (deductible against a future capital gain under TCGA 1992 s.38), whereas loan principal
 never is. Mixing them would corrupt any future CGT reporting.
+
+Note there are two independent declarations of "category kind" in this repo: Prisma's
+generated `CategoryKind` (which `CategorySeed.kind` is typed against) and the hand-rolled one
+in `src/lib/tax/types.ts`. They are structurally identical string-literal unions so the
+assignment typechecks, but that duplication is a latent drift risk of its own. Pre-existing
+and out of scope — do not attempt to unify them here.
 
 - [ ] **Step 3: Teach `resetDb` about the new tables**
 
@@ -2563,9 +2586,21 @@ In `README.md`, under `## Features`, add after the **Bookkeeping** bullet:
 - [ ] **Step 2: Run the full test suite**
 
 Run: `npm test`
-Expected: PASS — the pre-existing tests plus 37 new ones (17 schedule, 3 regression,
-8 advice, 4 generation, 8 matcher; the counts in Tasks 3–5 are cumulative within
-`schedule.test.ts`).
+
+Expected: **one pre-existing failure and nothing else.** `scripts/migrate-akaunting/apply.test.ts`
+fails with `Cannot open database because the directory does not exist` because its `beforeAll`
+points a bare `better-sqlite3` handle at `akaunting-migration/test-apply.db` and that
+directory does not exist in a fresh checkout. This was verified to fail identically on the
+commit before this feature branch's work began — it is **not** a regression, and fixing it is
+out of scope. Do not "fix" it by creating that directory as a side effect of this task.
+
+So the target is `Test Files 1 failed | N passed`, with the single failure being that file.
+If any *other* file fails, that is a real regression — stop and investigate.
+
+New tests added by this feature: 20 in `src/lib/loans/schedule.test.ts` (17 from Tasks 3–4
+plus 3 regression from Task 5 — the counts in those tasks are cumulative within the one
+file), 8 in `advice.test.ts`, 9 in `src/lib/data/loans.test.ts`, 8 in `loanMatch.test.ts`,
+and 3 in `categories.test.ts` — 48 in total.
 
 - [ ] **Step 3: Typecheck and build**
 
