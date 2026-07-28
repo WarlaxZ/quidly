@@ -24,3 +24,70 @@ export function computeInterestPence(
     (openingBalancePence * annualRateBps * daysInPeriod) / (BPS_DIVISOR * DAYS_PER_YEAR),
   );
 }
+
+export type LoanKind = "interestOnly" | "repayment";
+
+export interface LoanTerms {
+  kind: LoanKind;
+  annualRateBps: number;
+  scheduledPaymentPence: number;
+}
+
+export interface DerivedPayment {
+  openingBalancePence: number;
+  /** What the rate implies for this period — snapshotted even when overridden. */
+  computedInterestPence: number;
+  /** The figure that reaches SA105 box 44: the override when present, else computed. */
+  interestPence: number;
+  capitalPence: number;
+  closingBalancePence: number;
+  fullyRedeemed: boolean;
+}
+
+/**
+ * Split one payment into its deductible interest and non-deductible capital parts.
+ *
+ * One formula covers both loan kinds, because the payment amount is known:
+ *   capital = paid - interest
+ * `kind` therefore only drives the interest-only term-end warning, not the maths.
+ */
+export function derivePayment(
+  terms: LoanTerms,
+  openingBalancePence: number,
+  daysInPeriod: number,
+  paidPence: number,
+  actualInterestPence?: number | null,
+): DerivedPayment {
+  const computedInterestPence = computeInterestPence(
+    openingBalancePence,
+    terms.annualRateBps,
+    daysInPeriod,
+  );
+  const interestPence = actualInterestPence ?? computedInterestPence;
+
+  if (interestPence < 0) {
+    throw new Error("Interest cannot be negative.");
+  }
+  if (interestPence > paidPence) {
+    throw new Error(
+      `Interest of ${interestPence}p exceeds the payment of ${paidPence}p. ` +
+        `Record this as an arrears period, or correct the rate.`,
+    );
+  }
+
+  let capitalPence = paidPence - interestPence;
+  let fullyRedeemed = false;
+  if (capitalPence >= openingBalancePence) {
+    capitalPence = Math.max(0, openingBalancePence);
+    fullyRedeemed = true;
+  }
+
+  return {
+    openingBalancePence,
+    computedInterestPence,
+    interestPence,
+    capitalPence,
+    closingBalancePence: openingBalancePence - capitalPence,
+    fullyRedeemed,
+  };
+}

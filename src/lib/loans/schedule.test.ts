@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { computeInterestPence, daysBetween } from "./schedule";
+import { computeInterestPence, daysBetween, derivePayment, type LoanTerms } from "./schedule";
+
+const INTEREST_ONLY: LoanTerms = { kind: "interestOnly", annualRateBps: 270, scheduledPaymentPence: 75_000 };
 
 describe("daysBetween", () => {
   it("counts whole days", () => {
@@ -31,5 +33,71 @@ describe("computeInterestPence", () => {
 
   it("returns zero for a zero rate", () => {
     expect(computeInterestPence(7_100_000, 0, 31)).toBe(0);
+  });
+});
+
+describe("derivePayment", () => {
+  // The bug this whole feature exists to prevent: £750 paid, only ~£163 is deductible.
+  it("splits a £750 payment on a £71k interest-only loan at 2.7%", () => {
+    const d = derivePayment(INTEREST_ONLY, 7_100_000, 31, 75_000);
+    expect(d.computedInterestPence).toBe(16_281);
+    expect(d.interestPence).toBe(16_281);
+    expect(d.capitalPence).toBe(58_719);      // £587.19 — no tax relief whatsoever
+    expect(d.closingBalancePence).toBe(7_041_281);
+    expect(d.fullyRedeemed).toBe(false);
+  });
+
+  it("keeps interest + capital equal to the amount paid", () => {
+    const d = derivePayment(INTEREST_ONLY, 7_100_000, 31, 75_000);
+    expect(d.interestPence + d.capitalPence).toBe(75_000);
+  });
+
+  it("uses the actual interest override in place of the computed figure", () => {
+    const d = derivePayment(INTEREST_ONLY, 7_100_000, 31, 75_000, 16_000);
+    expect(d.computedInterestPence).toBe(16_281);  // snapshot preserved
+    expect(d.interestPence).toBe(16_000);
+    expect(d.capitalPence).toBe(59_000);
+  });
+
+  it("treats a payment equal to the interest as pure interest, no capital", () => {
+    const d = derivePayment(INTEREST_ONLY, 7_100_000, 31, 16_281);
+    expect(d.capitalPence).toBe(0);
+    expect(d.closingBalancePence).toBe(7_100_000);
+  });
+
+  it("clamps capital at the outstanding balance and flags full redemption", () => {
+    const d = derivePayment(INTEREST_ONLY, 50_000, 31, 75_000);
+    expect(d.capitalPence).toBe(50_000);
+    expect(d.closingBalancePence).toBe(0);
+    expect(d.fullyRedeemed).toBe(true);
+  });
+
+  it("flags full redemption when capital exactly clears the balance", () => {
+    const interest = computeInterestPence(58_719, 270, 31);
+    const d = derivePayment(INTEREST_ONLY, 58_719, 31, 58_719 + interest);
+    expect(d.closingBalancePence).toBe(0);
+    expect(d.fullyRedeemed).toBe(true);
+  });
+
+  // Silently absorbing this would understate the capital line and overstate relief. Refuse instead.
+  it("throws when interest exceeds the payment", () => {
+    expect(() => derivePayment(INTEREST_ONLY, 7_100_000, 31, 10_000)).toThrow(/exceeds the payment/);
+  });
+
+  it("throws on a negative interest override", () => {
+    expect(() => derivePayment(INTEREST_ONLY, 7_100_000, 31, 75_000, -1)).toThrow(/cannot be negative/);
+  });
+
+  it("accrues no interest over a zero-day first period", () => {
+    const d = derivePayment(INTEREST_ONLY, 7_100_000, 0, 75_000);
+    expect(d.interestPence).toBe(0);
+    expect(d.capitalPence).toBe(75_000);
+  });
+
+  it("applies the same formula to a repayment loan", () => {
+    const terms: LoanTerms = { kind: "repayment", annualRateBps: 500, scheduledPaymentPence: 100_000 };
+    const d = derivePayment(terms, 10_000_000, 30, 100_000);
+    expect(d.computedInterestPence).toBe(41_096);
+    expect(d.capitalPence).toBe(58_904);
   });
 });
