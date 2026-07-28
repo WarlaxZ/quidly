@@ -55,6 +55,7 @@ model Property {
   roundTripMiles  Int?
   transactions    Transaction[]
   recurringRules  RecurringRule[]
+  loans           Loan[]
   createdAt       DateTime      @default(now())
   companyId       String?
   company         Company?      @relation(fields: [companyId], references: [id])
@@ -86,27 +87,30 @@ model Category {
 }
 
 model Transaction {
-  id           String       @id @default(cuid())
-  propertyId   String
-  property     Property     @relation(fields: [propertyId], references: [id])
-  date         DateTime
-  amountPence  Int
-  direction    Direction
-  categoryId   String
-  category     Category     @relation(fields: [categoryId], references: [id])
-  vendorId     String?
-  vendor       Vendor?      @relation(fields: [vendorId], references: [id])
-  description  String?
-  miles        Int?
-  recurringId  String?
-  recurring    RecurringRule? @relation(fields: [recurringId], references: [id])
-  source       TxnSource    @default(manual)
-  externalRef  String?      @unique
-  attachmentId String?
-  attachment   Attachment?  @relation(fields: [attachmentId], references: [id])
-  createdAt    DateTime     @default(now())
+  id            String         @id @default(cuid())
+  propertyId    String
+  property      Property       @relation(fields: [propertyId], references: [id])
+  date          DateTime
+  amountPence   Int
+  direction     Direction
+  categoryId    String
+  category      Category       @relation(fields: [categoryId], references: [id])
+  vendorId      String?
+  vendor        Vendor?        @relation(fields: [vendorId], references: [id])
+  description   String?
+  miles         Int?
+  recurringId   String?
+  recurring     RecurringRule? @relation(fields: [recurringId], references: [id])
+  loanPaymentId String?
+  loanPayment   LoanPayment?   @relation(fields: [loanPaymentId], references: [id])
+  source        TxnSource      @default(manual)
+  externalRef   String?        @unique
+  attachmentId  String?
+  attachment    Attachment?    @relation(fields: [attachmentId], references: [id])
+  createdAt     DateTime       @default(now())
 
   @@index([propertyId, date])
+  @@index([loanPaymentId])
   @@unique([recurringId, date])
 }
 
@@ -197,4 +201,52 @@ model DeductionDismissal {
   createdAt DateTime @default(now())
 
   @@unique([taxYear, itemKey])
+}
+
+enum LoanKind {
+  interestOnly
+  repayment
+}
+
+model Loan {
+  id                    String        @id @default(cuid())
+  propertyId            String
+  property              Property      @relation(fields: [propertyId], references: [id])
+  name                  String
+  kind                  LoanKind
+  openingBalancePence   Int
+  annualRateBps         Int
+  scheduledPaymentPence Int
+  intervalUnit          IntervalUnit  @default(MONTH)
+  intervalCount         Int           @default(1)
+  dayOfWeek             Int?
+  dayOfMonth            Int?
+  monthOfYear           Int?
+  startDate             DateTime
+  termEndDate           DateTime?
+  active                Boolean       @default(true)
+  lastGeneratedDate     DateTime?
+  payments              LoanPayment[]
+  createdAt             DateTime      @default(now())
+
+  @@index([propertyId])
+}
+
+model LoanPayment {
+  id                    String        @id @default(cuid())
+  loanId                String
+  loan                  Loan          @relation(fields: [loanId], references: [id])
+  date                  DateTime
+  openingBalancePence   Int
+  computedInterestPence Int
+  actualInterestPence   Int?
+  paidPence             Int
+  // Denormalised: openingBalancePence - (paidPence - interest). Must only ever be
+  // written from derivePayment()'s output, never set by hand (e.g. an admin script
+  // or migration), or the balance chain to the next payment's opening balance desyncs.
+  closingBalancePence   Int
+  transactions          Transaction[]
+  createdAt             DateTime      @default(now())
+
+  @@unique([loanId, date])
 }
