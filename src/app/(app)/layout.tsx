@@ -14,6 +14,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       items: [
         { href: "/transactions", label: "Transactions" },
         { href: "/recurring", label: "Recurring" },
+        { href: "/loans", label: "Mortgages & loans" },
         { href: "/import", label: "Import" },
         ...(isExtractionEnabled() ? [{ href: "/scan", label: "Scan a receipt" }] : []),
       ],
