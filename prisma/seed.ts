@@ -25,6 +25,7 @@ const categories: CategorySeed[] = [
   { name: "Travel & mileage", kind: "expense", sa105Box: "29", allowable: true },
   { name: "Use of home", kind: "expense", sa105Box: "29", allowable: true },
   { name: "Mortgage / loan interest", kind: "finance", sa105Box: "44", allowable: true },
+  { name: "Loan capital repayment", kind: "capital", sa105Box: null, allowable: false },
   { name: "Capital improvements", kind: "capital", sa105Box: null, allowable: false },
 ];
 
