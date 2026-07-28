@@ -1,5 +1,7 @@
 /** Loan payment splitting. All money is integer pence — never floats. */
 
+import type { LoanKind } from "../tax/types";
+
 const DAYS_PER_YEAR = 365;
 const BPS_DIVISOR = 10_000;
 
@@ -25,11 +27,12 @@ export function computeInterestPence(
   );
 }
 
-export type LoanKind = "interestOnly" | "repayment";
-
 export interface LoanTerms {
   kind: LoanKind;
   annualRateBps: number;
+  /** Schedule metadata only. The amount actually debited is `PaymentInput.paidPence` —
+   *  never pass this into `derivePayment` as the amount paid, because a landlord who
+   *  overpays debits more than the schedule says. */
   scheduledPaymentPence: number;
 }
 
@@ -44,20 +47,41 @@ export interface DerivedPayment {
   fullyRedeemed: boolean;
 }
 
+export interface PaymentInput {
+  terms: LoanTerms;
+  openingBalancePence: number;
+  /** Days since the previous payment date, or since the loan's startDate for the first. */
+  daysInPeriod: number;
+  /** The amount that ACTUALLY left the bank this period. */
+  paidPence: number;
+  /** The lender's real figure, when reconciling against a statement. */
+  actualInterestPence?: number | null;
+}
+
 /**
  * Split one payment into its deductible interest and non-deductible capital parts.
  *
  * One formula covers both loan kinds, because the payment amount is known:
  *   capital = paid - interest
  * `kind` therefore only drives the interest-only term-end warning, not the maths.
+ *
+ * Takes a single options object rather than positional arguments: several of these are
+ * same-typed pence values of similar magnitude, and TypeScript cannot catch a transposed
+ * pair of positional numbers — the failure mode would be a silently wrong SA105 box 44 figure.
  */
-export function derivePayment(
-  terms: LoanTerms,
-  openingBalancePence: number,
-  daysInPeriod: number,
-  paidPence: number,
-  actualInterestPence?: number | null,
-): DerivedPayment {
+export function derivePayment({
+  terms,
+  openingBalancePence,
+  daysInPeriod,
+  paidPence,
+  actualInterestPence,
+}: PaymentInput): DerivedPayment {
+  if (openingBalancePence < 0) {
+    // Surfaced rather than clamped: a negative balance means the caller's balance chain
+    // has desynced, and silently coercing it to zero would hide that behind a plausible figure.
+    throw new Error("The loan's outstanding balance cannot be negative.");
+  }
+
   const computedInterestPence = computeInterestPence(
     openingBalancePence,
     terms.annualRateBps,
@@ -70,15 +94,15 @@ export function derivePayment(
   }
   if (interestPence > paidPence) {
     throw new Error(
-      `Interest of ${interestPence}p exceeds the payment of ${paidPence}p. ` +
-        `Record this as an arrears period, or correct the rate.`,
+      "Interest for this period exceeds the payment. " +
+        "Record this as an arrears period, or correct the rate.",
     );
   }
 
   let capitalPence = paidPence - interestPence;
   let fullyRedeemed = false;
   if (capitalPence >= openingBalancePence) {
-    capitalPence = Math.max(0, openingBalancePence);
+    capitalPence = openingBalancePence;
     fullyRedeemed = true;
   }
 

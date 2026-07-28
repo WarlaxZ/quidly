@@ -1,6 +1,7 @@
 export type CategoryKind = "income" | "expense" | "finance" | "capital";
 export type Direction = "in" | "out";
 export type Region = "englandWalesNI" | "scotland";
+export type LoanKind = "interestOnly" | "repayment";
 
 /** A transaction as the tax engine sees it — money in pence, plus its category facts. */
 export interface TaxTxn {
