@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { createLoan, listLoans, deleteLoan, generateLoanPayments, type LoanInput } from "./loans";
+import {
+  createLoan, listLoans, deleteLoan, generateLoanPayments,
+  setActualInterest, reconcileYear, applyYearVariance, capitalNoReliefPence,
+  type LoanInput,
+} from "./loans";
 import { getOrCreateDefaultProperty } from "./property";
 import { resetDb } from "../../../test/setup/resetDb";
 import { prisma } from "../db";
@@ -154,5 +158,132 @@ describe("loans data layer", () => {
     );
     // £1,829.00 — the same figure the in-memory model produces for 365 days of accrual.
     expect(totalInterest).toBe(182_900);
+  });
+});
+
+/** The standard fixture generated to three payments. Returns them date-ascending. */
+async function threePayments() {
+  const property = await getOrCreateDefaultProperty();
+  const loan = await createLoan(interestOnly({ propertyId: property.id }));
+  await generateLoanPayments(loan.id, new Date("2026-07-15"));
+  const payments = await prisma.loanPayment.findMany({
+    where: { loanId: loan.id }, orderBy: { date: "asc" },
+  });
+  return { loan, payments };
+}
+
+describe("reconcileYear", () => {
+  it("totals the year's interest — the figure that reaches SA105 box 44", async () => {
+    const { loan, payments } = await threePayments();
+    const r = await reconcileYear(loan.id, "2026-27");
+    expect(r.paymentCount).toBe(3);
+    expect(r.recordedInterestPence).toBe(47_396);
+    expect(r.lastPaymentId).toBe(payments[2].id);
+  });
+
+  it("prefers the actual figure over the computed one once overridden", async () => {
+    const { loan, payments } = await threePayments();
+    await setActualInterest(payments[2].id, 16_000);
+    const r = await reconcileYear(loan.id, "2026-27");
+    expect(r.recordedInterestPence).toBe(47_902); // 15,756 + 16,146 + 16,000
+  });
+
+  it("reports an empty year without throwing", async () => {
+    const { loan } = await threePayments();
+    const r = await reconcileYear(loan.id, "2025-26");
+    expect(r).toEqual({ recordedInterestPence: 0, paymentCount: 0, lastPaymentId: null });
+  });
+});
+
+describe("setActualInterest", () => {
+  it("preserves the computed snapshot while changing the actual figure", async () => {
+    const { payments } = await threePayments();
+    await setActualInterest(payments[2].id, 16_000);
+    const after = await prisma.loanPayment.findUniqueOrThrow({ where: { id: payments[2].id } });
+    // The rate-derived snapshot is the audit trail and must survive the override.
+    expect(after.computedInterestPence).toBe(15_494);
+    expect(after.actualInterestPence).toBe(16_000);
+    expect(after.closingBalancePence).toBe(6_922_902); // 6,981,902 − (75,000 − 16,000)
+  });
+
+  it("rewrites both ledger rows to match the new split", async () => {
+    const { loan, payments } = await threePayments();
+    await setActualInterest(payments[2].id, 16_000);
+    const rows = await prisma.transaction.findMany({
+      where: { loanPaymentId: payments[2].id }, include: { category: true },
+    });
+    expect(rows).toHaveLength(2);
+    expect(rows.find((r) => r.category.kind === "finance")!.amountPence).toBe(16_000);
+    expect(rows.find((r) => r.category.kind === "capital")!.amountPence).toBe(59_000);
+    // The other payments' rows are untouched — the delete must scope to one payment.
+    const all = await prisma.transaction.findMany({ where: { loanPayment: { loanId: loan.id } } });
+    expect(all).toHaveLength(6);
+  });
+
+  it("refuses an override larger than the payment", async () => {
+    const { payments } = await threePayments();
+    await expect(setActualInterest(payments[0].id, 80_000)).rejects.toThrow(/exceeds the payment/);
+  });
+
+  it("leaves later payments' opening balances stale — the documented limitation", async () => {
+    const { payments } = await threePayments();
+    await setActualInterest(payments[0].id, 10_000); // less interest ⇒ more capital repaid
+    const jun = await prisma.loanPayment.findUniqueOrThrow({ where: { id: payments[1].id } });
+    // Deliberately NOT recalculated. applyYearVariance targets the year's final payment
+    // precisely so this staleness stays contained. Pinned so the limitation is explicit.
+    expect(jun.openingBalancePence).toBe(7_040_756);
+  });
+});
+
+describe("applyYearVariance", () => {
+  it("makes the year's total match the lender's statement exactly", async () => {
+    const { loan, payments } = await threePayments();
+    await applyYearVariance(loan.id, "2026-27", 50_000);
+    expect((await reconcileYear(loan.id, "2026-27")).recordedInterestPence).toBe(50_000);
+    // The whole £26.04 delta landed on the final payment, not spread around.
+    const jul = await prisma.loanPayment.findUniqueOrThrow({ where: { id: payments[2].id } });
+    expect(jul.actualInterestPence).toBe(18_098); // 15,494 + 2,604
+    const may = await prisma.loanPayment.findUniqueOrThrow({ where: { id: payments[0].id } });
+    expect(may.actualInterestPence).toBeNull();
+  });
+
+  it("does nothing when the statement already agrees", async () => {
+    const { loan, payments } = await threePayments();
+    await applyYearVariance(loan.id, "2026-27", 47_396);
+    const jul = await prisma.loanPayment.findUniqueOrThrow({ where: { id: payments[2].id } });
+    expect(jul.actualInterestPence).toBeNull(); // no write at all
+  });
+
+  it("errors helpfully when the year has no payments", async () => {
+    const { loan } = await threePayments();
+    await expect(applyYearVariance(loan.id, "2025-26", 50_000)).rejects.toThrow(/no payments/i);
+  });
+
+  it("surfaces the guard when the variance exceeds a single payment", async () => {
+    const { loan } = await threePayments();
+    await expect(applyYearVariance(loan.id, "2026-27", 200_000)).rejects.toThrow(/exceeds the payment/);
+  });
+});
+
+describe("capitalNoReliefPence", () => {
+  it("sums the year's capital repayments — the money that got no relief", async () => {
+    const { loan } = await threePayments();
+    expect(await capitalNoReliefPence(loan.id, "2026-27")).toBe(177_604);
+  });
+
+  it("counts a 6 April payment in the new tax year only, never both", async () => {
+    const property = await getOrCreateDefaultProperty();
+    // First payment strictly after the 2027-03-06 origin is 2027-04-06 — the exact boundary.
+    // The 2026-27 year ends 2027-04-06 exclusive, so this belongs to 2027-28 alone.
+    const loan = await createLoan(interestOnly({
+      propertyId: property.id, startDate: new Date("2027-03-06"), dayOfMonth: 6,
+    }));
+    await generateLoanPayments(loan.id, new Date("2027-04-10"));
+    const payments = await prisma.loanPayment.findMany({ where: { loanId: loan.id } });
+    expect(payments).toHaveLength(1);
+    expect(payments[0].date.toISOString().slice(0, 10)).toBe("2027-04-06");
+
+    expect(await capitalNoReliefPence(loan.id, "2026-27")).toBe(0);
+    expect(await capitalNoReliefPence(loan.id, "2027-28")).toBeGreaterThan(0);
   });
 });
