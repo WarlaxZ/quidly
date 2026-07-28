@@ -1304,15 +1304,31 @@ describe("loans data layer", () => {
     expect(await generateLoanPayments(loan.id, new Date("2026-07-02"))).toBe(1);
   });
 
-  it("carries the closing balance forward so interest falls each period", async () => {
+  it("carries the closing balance forward, unbroken, so the balance always falls", async () => {
     const property = await getOrCreateDefaultProperty();
     const loan = await createLoan(interestOnly({ propertyId: property.id }));
     await generateLoanPayments(loan.id, new Date("2026-07-15"));
     const payments = await prisma.loanPayment.findMany({ where: { loanId: loan.id }, orderBy: { date: "asc" } });
-    expect(payments).toHaveLength(3);
+    expect(payments).toHaveLength(3); // 1 May, 1 Jun, 1 Jul
+
+    // Chain integrity: each period opens exactly where the last one closed.
     expect(payments[1].openingBalancePence).toBe(payments[0].closingBalancePence);
     expect(payments[2].openingBalancePence).toBe(payments[1].closingBalancePence);
-    expect(payments[1].computedInterestPence).toBeLessThan(payments[0].computedInterestPence);
+
+    // The balance falls every period. This holds unconditionally.
+    expect(payments[1].closingBalancePence).toBeLessThan(payments[0].closingBalancePence);
+    expect(payments[2].closingBalancePence).toBeLessThan(payments[1].closingBalancePence);
+
+    // Interest is deliberately NOT asserted to fall month-over-month, because under daily
+    // accrual it does not: a 31-day period adds ~3.3% of accrual, which outweighs the ~0.8%
+    // the balance dropped, so 1 Jun (31 days) costs MORE than 1 May (30 days) —
+    // £161.46 vs £157.56 on this loan. Interest only falls between periods of equal length.
+    // 1 May and 1 Jul are both 30-day periods, so the falling balance shows through there.
+    const may = payments[0], jul = payments[2];
+    expect(jul.computedInterestPence).toBeLessThan(may.computedInterestPence);
+    expect(may.computedInterestPence).toBe(15_756);   // 30 days on £71,000.00
+    expect(payments[1].computedInterestPence).toBe(16_146); // 31 days on £70,407.56 — higher
+    expect(jul.computedInterestPence).toBe(15_494);   // 30 days on £69,819.02
   });
 
   it("omits a zero-value capital line when the payment is pure interest", async () => {
