@@ -744,10 +744,42 @@ describe("SA105 treatment of a split mortgage payment", () => {
 
   it("excludes capital repayment from profit entirely", () => {
     const txns = yearOfSplitPayments();
+    const capitalPence = txns.filter((t) => t.categoryKind === "capital")
+      .reduce((sum, t) => sum + t.amountPence, 0);
+    const interestPence = txns.filter((t) => t.categoryKind === "finance")
+      .reduce((sum, t) => sum + t.amountPence, 0);
+
+    // Guard against this test going vacuous: the capital rows must actually be present
+    // and material, and together with interest must account for every penny debited.
+    expect(capitalPence).toBeGreaterThan(700_000);
+    expect(capitalPence + interestPence).toBe(12 * 75_000);
+
     const { profitPence, expensesPence } = computeProfit([RENT, ...txns]);
     // Capital is neither an expense nor a finance cost — profit is rent, untouched.
     expect(expensesPence).toBe(0);
     expect(profitPence).toBe(1_200_000);
+  });
+
+  // The assertion above would pass even if the capital rows were simply absent, because
+  // computeProfit ignores them for two independent reasons (allowable: false, and no
+  // "capital" arm in its categoryKind switch). This mutation test is what actually proves
+  // the categorisation is load-bearing: recategorise capital as a deductible expense and
+  // the profit must move by exactly that amount.
+  it("would wrongly reduce profit if capital were miscategorised as an expense", () => {
+    const txns = yearOfSplitPayments();
+    const miscategorised = txns.map((t) =>
+      t.categoryKind === "capital"
+        ? { ...t, categoryKind: "expense" as const, allowable: true, sa105Box: "29" }
+        : t,
+    );
+
+    const right = computeProfit([RENT, ...txns]);
+    const wrong = computeProfit([RENT, ...miscategorised]);
+
+    expect(right.expensesPence).toBe(0);
+    expect(wrong.expensesPence).toBeGreaterThan(700_000);
+    // The whole difference is the capital that must never have been deducted.
+    expect(right.profitPence - wrong.profitPence).toBe(wrong.expensesPence);
   });
 
   it("would have overclaimed by over £7,000 if the payment were filed unsplit", () => {
@@ -837,7 +869,9 @@ describe("loanAdvice", () => {
     const a = loanAdvice({ ...BASE, ownershipType: "company" });
     expect(a.reliefBasis).toBe("fullDeduction");
     expect(a.reducerBps).toBeNull();
-    expect(a.effectiveRateBps).toBe(270); // nominal; CT relief depends on the company's rate
+    // No single "effective rate" exists: the real post-relief cost depends on the
+    // company's corporation tax rate, which loanAdvice does not know.
+    expect(a.effectiveRateBps).toBeNull();
   });
 
   it("passes through the capital that attracted no relief", () => {
@@ -891,19 +925,46 @@ export interface LoanAdviceInput {
   currentBalancePence: number;
 }
 
-export interface LoanAdvice {
+interface LoanAdviceCommon {
   nominalRateBps: number;
-  /** Null when relief is by full deduction rather than the Section 24 reducer. */
-  reducerBps: number | null;
-  /** Rate after relief. Equals the nominal rate when reliefBasis is "fullDeduction" —
-   *  the UI must not label it "after relief" in that case. */
-  effectiveRateBps: number;
-  reliefBasis: "section24Reducer" | "fullDeduction";
+  /** This tax year's capital repayments — money that attracted no relief at all. */
   capitalNoReliefPence: number;
   termEnd: { date: Date; balanceDuePence: number } | null;
 }
 
+/**
+ * Discriminated on `reliefBasis` so the company case cannot be misread.
+ *
+ * An earlier draft had `effectiveRateBps: number` always populated, holding the *nominal*
+ * rate for company-owned property with a comment telling the UI not to label it
+ * "after relief". A comment is not enough on a financial disclosure surface: a caller
+ * destructuring `{ effectiveRateBps }` without checking `reliefBasis` would silently show a
+ * wrong figure. Narrowing on `reliefBasis` now narrows the rate fields too, so the compiler
+ * enforces the branch.
+ */
+export type LoanAdvice =
+  | (LoanAdviceCommon & {
+      reliefBasis: "section24Reducer";
+      /** The property basic rate: 20%, plus any year/region surcharge. */
+      reducerBps: number;
+      /** The nominal rate after Section 24 relief. */
+      effectiveRateBps: number;
+    })
+  | (LoanAdviceCommon & {
+      /** Company-held: interest is deducted in full against profits, so there is no
+       *  Section 24 restriction and no single "effective rate" — the real post-relief cost
+       *  depends on the company's corporation tax rate, which this function does not know. */
+      reliefBasis: "fullDeduction";
+      reducerBps: null;
+      effectiveRateBps: null;
+    });
+
 export function loanAdvice(input: LoanAdviceInput): LoanAdvice {
+  // Only interest-only loans get the term-end warning. A repayment loan's balance
+  // amortises to zero by design, so warning on its *current* balance would false-alarm for
+  // its entire life. Detecting genuine underpayment on a repayment loan needs a projection
+  // to the term-end date, which is out of scope (see the spec's non-goals) — so the
+  // omission is deliberate, not an oversight of the `kind` gate.
   const termEnd =
     input.kind === "interestOnly" && input.termEndDate
       ? { date: input.termEndDate, balanceDuePence: input.currentBalancePence }
@@ -915,7 +976,7 @@ export function loanAdvice(input: LoanAdviceInput): LoanAdvice {
     return {
       nominalRateBps: input.annualRateBps,
       reducerBps: null,
-      effectiveRateBps: input.annualRateBps,
+      effectiveRateBps: null,
       reliefBasis: "fullDeduction",
       capitalNoReliefPence: input.capitalNoReliefPence,
       termEnd,
@@ -2085,7 +2146,7 @@ export default async function LoanDetailPage({
           <div className="money mt-1 text-xl text-ink">{(advice.nominalRateBps / 100).toFixed(2)}%</div>
           <div className="mt-1 text-sm text-muted">
             {advice.reliefBasis === "section24Reducer"
-              ? `${(advice.effectiveRateBps / 100).toFixed(2)}% after ${(advice.reducerBps! / 100).toFixed(0)}% relief`
+              ? `${(advice.effectiveRateBps / 100).toFixed(2)}% after ${(advice.reducerBps / 100).toFixed(0)}% relief`
               : "Interest deducted in full against company profits"}
           </div>
         </div>
