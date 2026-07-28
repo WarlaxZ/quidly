@@ -736,10 +736,12 @@ describe("SA105 treatment of a split mortgage payment", () => {
       region: "englandWalesNI", usePropertyAllowance: false,
     });
 
-    // A full year of payments is £9,000. Deductible interest is under £1,900 of it.
-    expect(summary.financeCostsPence).toBeLessThan(190_000);
-    expect(summary.financeCostsPence).toBeGreaterThan(180_000);
-    expect(summary.sa105["44"]).toBe(summary.financeCostsPence);
+    // A full year of payments is £9,000. Only £1,829.00 of it is deductible.
+    // Asserted exactly, not as a range: everything here is deterministic integer pence
+    // with no floating point, so a range would let a real rate drift pass unnoticed —
+    // which would defeat the purpose of the one test named for pinning box 44.
+    expect(summary.financeCostsPence).toBe(182_900);
+    expect(summary.sa105["44"]).toBe(182_900);
   });
 
   it("excludes capital repayment from profit entirely", () => {
@@ -795,7 +797,9 @@ describe("SA105 treatment of a split mortgage payment", () => {
       taxYear: "2026-27", otherIncomePence: 7_347_000,
       region: "englandWalesNI", usePropertyAllowance: false,
     });
-    expect(wrong.financeCostsPence - right.financeCostsPence).toBeGreaterThan(700_000);
+    // £9,000 filed vs £1,829 actually deductible: a £7,171.00 overclaim, asserted exactly.
+    expect(wrong.financeCostsPence).toBe(900_000);
+    expect(wrong.financeCostsPence - right.financeCostsPence).toBe(717_100);
   });
 });
 ```
@@ -1350,6 +1354,26 @@ describe("loans data layer", () => {
     const loan = await createLoan(interestOnly({ propertyId: property.id }));
     await deleteLoan(loan.id);
     expect(await listLoans(property.id)).toHaveLength(0);
+  });
+
+  // Cross-check against the hand-rolled `yearOfSplitPayments()` helper in
+  // sa105Regression.test.ts. That helper reimplements this balance-carry-forward loop in
+  // memory, so without this test the two could drift — the regression suite would keep
+  // passing against its own private copy of the sequencing while the real generator broke.
+  it("produces the same annual interest as the in-memory regression model", async () => {
+    const property = await getOrCreateDefaultProperty();
+    const loan = await createLoan(interestOnly({
+      propertyId: property.id, startDate: new Date("2026-04-01"),
+    }));
+    await generateLoanPayments(loan.id, new Date("2027-04-02"));
+
+    const payments = await prisma.loanPayment.findMany({ where: { loanId: loan.id }, orderBy: { date: "asc" } });
+    expect(payments).toHaveLength(12);
+    const totalInterest = payments.reduce(
+      (sum, p) => sum + (p.actualInterestPence ?? p.computedInterestPence), 0,
+    );
+    // £1,829.00 — the same figure the in-memory model produces for 365 days of accrual.
+    expect(totalInterest).toBe(182_900);
   });
 });
 ```
