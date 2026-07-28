@@ -199,3 +199,102 @@ function buildPaymentTransactions(
   }
   return rows;
 }
+
+/**
+ * Replace one payment's interest with the lender's actual figure, rewriting both ledger
+ * rows to match.
+ *
+ * Known limitation: later payments' opening balances are NOT recalculated, so overriding a
+ * mid-year payment leaves subsequent balances slightly stale. `applyYearVariance` targets
+ * the final payment of the year precisely to keep that contained.
+ */
+export async function setActualInterest(paymentId: string, actualInterestPence: number): Promise<void> {
+  const payment = await prisma.loanPayment.findUnique({
+    where: { id: paymentId },
+    include: { loan: true },
+  });
+  if (!payment) throw new Error("That payment could not be found.");
+
+  const d = derivePayment({
+    terms: termsOf(payment.loan),
+    openingBalancePence: payment.openingBalancePence,
+    daysInPeriod: 0, // irrelevant: the override supplies the interest
+    paidPence: payment.paidPence,
+    actualInterestPence,
+  });
+
+  const { interestId, capitalId } = await loanCategoryIds();
+
+  await prisma.$transaction(async (tx) => {
+    await tx.transaction.deleteMany({ where: { loanPaymentId: paymentId } });
+    await tx.transaction.createMany({
+      data: buildPaymentTransactions(
+        payment.loan, paymentId, payment.date,
+        d.interestPence, d.capitalPence, interestId, capitalId,
+      ),
+    });
+    await tx.loanPayment.update({
+      where: { id: paymentId },
+      data: { actualInterestPence, closingBalancePence: d.closingBalancePence },
+    });
+  });
+}
+
+export interface YearReconcile {
+  recordedInterestPence: number;
+  paymentCount: number;
+  lastPaymentId: string | null;
+}
+
+/** Total interest recorded for a tax year — the figure that reaches SA105 box 44. */
+export async function reconcileYear(loanId: string, taxYear: string): Promise<YearReconcile> {
+  const { start, end } = taxYearRange(taxYear);
+  const payments = await prisma.loanPayment.findMany({
+    where: { loanId, date: { gte: start, lt: end } },
+    orderBy: { date: "asc" },
+  });
+  return {
+    recordedInterestPence: payments.reduce(
+      (sum, p) => sum + (p.actualInterestPence ?? p.computedInterestPence),
+      0,
+    ),
+    paymentCount: payments.length,
+    lastPaymentId: payments.at(-1)?.id ?? null,
+  };
+}
+
+/**
+ * Make the year's recorded interest match the lender's annual statement exactly, by
+ * adjusting the final payment of the year. Box 44 then sits on the lender's number —
+ * the figure HMRC would check against.
+ */
+export async function applyYearVariance(
+  loanId: string,
+  taxYear: string,
+  statementInterestPence: number,
+): Promise<void> {
+  const { recordedInterestPence, lastPaymentId } = await reconcileYear(loanId, taxYear);
+  if (!lastPaymentId) throw new Error("No payments are recorded for that tax year.");
+  const delta = statementInterestPence - recordedInterestPence;
+  if (delta === 0) return;
+
+  const last = await prisma.loanPayment.findUnique({ where: { id: lastPaymentId } });
+  if (!last) throw new Error("That payment could not be found.");
+  const current = last.actualInterestPence ?? last.computedInterestPence;
+  // derivePayment throws if this pushes interest above the payment — surfaced to the user.
+  await setActualInterest(lastPaymentId, current + delta);
+}
+
+/** This tax year's capital repayments for a loan — money that attracted no relief. */
+export async function capitalNoReliefPence(loanId: string, taxYear: string): Promise<number> {
+  const { start, end } = taxYearRange(taxYear);
+  const rows = await prisma.transaction.findMany({
+    where: {
+      loanPayment: { loanId },
+      date: { gte: start, lt: end },
+      category: { name: CAPITAL_CATEGORY_NAME },
+    },
+    select: { amountPence: true },
+  });
+  return rows.reduce((sum, r) => sum + r.amountPence, 0);
+}
