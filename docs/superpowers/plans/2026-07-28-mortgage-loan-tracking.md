@@ -200,10 +200,20 @@ git commit -m "feat(loans): add Loan and LoanPayment models"
 `src/lib/loans/categories.ts`:
 
 ```ts
-/** Category names the loan engine writes to. Kept here so the seed and the data
- *  layer cannot drift apart on a string literal. */
+import type { CategoryKind } from "../tax/types";
+
+/** The two categories the loan engine writes to.
+ *
+ *  Kept here so the seed, the data layer and the tests cannot drift apart on a string
+ *  literal. The kinds matter as much as the names: `finance` is what routes interest into
+ *  the Section 24 reducer and SA105 box 44, and `capital` (non-allowable) is what keeps
+ *  principal repayment out of the profit computation entirely. A mismatch here would not
+ *  fail the build — it would silently produce a wrong tax figure. */
 export const INTEREST_CATEGORY_NAME = "Mortgage / loan interest";
+export const INTEREST_CATEGORY_KIND: CategoryKind = "finance";
+
 export const CAPITAL_CATEGORY_NAME = "Loan capital repayment";
+export const CAPITAL_CATEGORY_KIND: CategoryKind = "capital";
 ```
 
 - [ ] **Step 2: Add the category to the seed**
@@ -219,15 +229,94 @@ Do **not** reuse `Capital improvements` — that category is genuine enhancement
 (deductible against a future capital gain under TCGA 1992 s.38), whereas loan principal
 never is. Mixing them would corrupt any future CGT reporting.
 
-- [ ] **Step 3: Run the seed**
+- [ ] **Step 3: Teach `resetDb` about the new tables**
 
-Run: `npx prisma db seed`
-Expected: `Seeded 1 new categories (11 already existed).`
+`test/setup/resetDb.ts` deletes tables in foreign-key order between tests. Without this,
+loan rows leak between test files. `Transaction` references `LoanPayment`, `LoanPayment`
+references `Loan`, and `Loan` references `Property` with `ON DELETE RESTRICT` — so the two
+new deletes must sit **after** `transaction` and **before** `property`:
 
-- [ ] **Step 4: Commit**
+```ts
+import { prisma } from "../../src/lib/db";
+export async function resetDb() {
+  await prisma.loginAttempt.deleteMany();
+  await prisma.transaction.deleteMany();
+  await prisma.loanPayment.deleteMany();
+  await prisma.loan.deleteMany();
+  await prisma.recurringRule.deleteMany();
+  await prisma.attachment.deleteMany();
+  await prisma.vendor.deleteMany();
+  await prisma.property.deleteMany();
+  await prisma.companyLedgerEntry.deleteMany();
+  await prisma.company.deleteMany();
+  await prisma.taxYearProfile.deleteMany();
+}
+```
+
+- [ ] **Step 4: Write a test that pins the seeded categories**
+
+The whole feature's correctness rests on two category *names* resolving to the right
+`CategoryKind`. A rename or a typo would not fail the build — it would silently mis-file
+money and produce a wrong tax figure. Pin it.
+
+`test.db` is created, migrated and seeded by `test/setup/globalSetup.ts`, so the seeded rows
+are available to tests. Note Vitest's `include` is `src/**/*.test.ts` and
+`scripts/**/*.test.ts` — a test cannot live under `prisma/`.
+
+`src/lib/loans/categories.test.ts`:
+
+```ts
+import { describe, expect, it } from "vitest";
+import { prisma } from "../db";
+import {
+  INTEREST_CATEGORY_NAME, CAPITAL_CATEGORY_NAME,
+  INTEREST_CATEGORY_KIND, CAPITAL_CATEGORY_KIND,
+} from "./categories";
+
+describe("loan categories are seeded with the kinds the tax engine relies on", () => {
+  it("files interest as a finance cost against SA105 box 44", async () => {
+    const c = await prisma.category.findUnique({ where: { name: INTEREST_CATEGORY_NAME } });
+    expect(c).not.toBeNull();
+    expect(c!.kind).toBe(INTEREST_CATEGORY_KIND);
+    expect(c!.kind).toBe("finance");
+    expect(c!.sa105Box).toBe("44");
+    expect(c!.allowable).toBe(true);
+  });
+
+  it("files capital repayment as non-allowable capital with no SA105 box", async () => {
+    const c = await prisma.category.findUnique({ where: { name: CAPITAL_CATEGORY_NAME } });
+    expect(c).not.toBeNull();
+    expect(c!.kind).toBe(CAPITAL_CATEGORY_KIND);
+    expect(c!.kind).toBe("capital");
+    // A box here would leak capital repayment into the SA105 — the exact bug this feature prevents.
+    expect(c!.sa105Box).toBeNull();
+    expect(c!.allowable).toBe(false);
+  });
+
+  it("keeps capital repayment distinct from capital improvements", async () => {
+    // Improvements are deductible against a future capital gain (TCGA 1992 s.38);
+    // loan principal never is. They must not be the same category.
+    expect(CAPITAL_CATEGORY_NAME).not.toBe("Capital improvements");
+    const improvements = await prisma.category.findUnique({ where: { name: "Capital improvements" } });
+    expect(improvements).not.toBeNull();
+  });
+});
+```
+
+- [ ] **Step 5: Run the seed and the test**
+
+Run: `npx vitest run src/lib/loans/categories.test.ts`
+Expected: PASS — 3 tests. (`globalSetup` seeds `test.db` automatically; you do not need to
+seed manually for the test to pass.)
+
+To seed a real dev database you would run `npx prisma db seed`, which prints
+`Seeded 1 new categories (11 already existed).` — but only do that if a dev database and
+`.env` already exist. Do not create one.
+
+- [ ] **Step 6: Commit**
 
 ```bash
-git add prisma/seed.ts src/lib/loans/categories.ts
+git add prisma/seed.ts src/lib/loans/categories.ts src/lib/loans/categories.test.ts test/setup/resetDb.ts
 git commit -m "feat(loans): seed the Loan capital repayment category"
 ```
 
@@ -982,60 +1071,138 @@ function buildPaymentTransactions(
 
 - [ ] **Step 2: Write the test**
 
+This is a **real integration test against Prisma**, following the established pattern in
+`src/lib/data/recurring.test.ts`. Do not write a pure function that mirrors the generation
+loop — that would test a duplicate of the logic rather than `generateLoanPayments` itself,
+and would miss the transaction pairing, the idempotency and the category wiring, which are
+the parts most likely to be wrong.
+
+`test/setup/globalSetup.ts` creates `test.db`, applies migrations and seeds it. `resetDb()`
+clears it between tests (Task 2 taught it about the new tables).
+
 `src/lib/data/loans.test.ts`:
 
 ```ts
-import { describe, expect, it } from "vitest";
-import { derivePayment, daysBetween } from "../loans/schedule";
+import { beforeEach, describe, expect, it } from "vitest";
+import { createLoan, listLoans, deleteLoan, generateLoanPayments, type LoanInput } from "./loans";
+import { getOrCreateDefaultProperty } from "./property";
+import { resetDb } from "../../../test/setup/resetDb";
+import { prisma } from "../db";
+import { INTEREST_CATEGORY_NAME, CAPITAL_CATEGORY_NAME } from "../loans/categories";
 
-/** The generation loop's arithmetic, exercised without a database: this mirrors the
- *  balance/boundary walk in generateLoanPayments so the sequencing is covered by a
- *  fast unit test. The Prisma writes themselves are verified by the live run. */
-function walk(dates: Date[], startDate: Date, openingBalancePence: number) {
-  const terms = { kind: "interestOnly" as const, annualRateBps: 270, scheduledPaymentPence: 75_000 };
-  let balance = openingBalancePence;
-  let boundary = startDate;
-  const out: { date: Date; interestPence: number; capitalPence: number; closingBalancePence: number }[] = [];
-  for (const date of dates) {
-    if (balance <= 0) break;
-    const d = derivePayment(terms, balance, daysBetween(boundary, date), terms.scheduledPaymentPence);
-    out.push({ date, interestPence: d.interestPence, capitalPence: d.capitalPence, closingBalancePence: d.closingBalancePence });
-    balance = d.closingBalancePence;
-    boundary = date;
-    if (d.fullyRedeemed) break;
-  }
-  return out;
+/** £71k interest-only at 2.7%, £750/month on the 1st, accruing from 1 Apr 2026. */
+function interestOnly(overrides: Partial<LoanInput>): LoanInput {
+  return {
+    propertyId: "", name: "Test BTL", kind: "interestOnly",
+    openingBalancePence: 7_100_000, annualRateBps: 270, scheduledPaymentPence: 75_000,
+    intervalUnit: "MONTH", intervalCount: 1, dayOfWeek: null, dayOfMonth: 1, monthOfYear: null,
+    startDate: new Date("2026-04-01"), termEndDate: null, ...overrides,
+  };
 }
 
-describe("loan payment generation sequencing", () => {
-  const dates = [
-    new Date("2026-05-01T00:00:00Z"),
-    new Date("2026-06-01T00:00:00Z"),
-    new Date("2026-07-01T00:00:00Z"),
-  ];
+async function ledgerFor(loanId: string) {
+  return prisma.transaction.findMany({
+    where: { loanPayment: { loanId } },
+    include: { category: true },
+    orderBy: [{ date: "asc" }, { amountPence: "asc" }],
+  });
+}
 
-  it("carries the closing balance into the next period", () => {
-    const rows = walk(dates, new Date("2026-04-01T00:00:00Z"), 7_100_000);
-    expect(rows).toHaveLength(3);
-    expect(rows[1].closingBalancePence).toBeLessThan(rows[0].closingBalancePence);
-    expect(rows[2].closingBalancePence).toBeLessThan(rows[1].closingBalancePence);
+beforeEach(async () => { await resetDb(); });
+
+describe("loans data layer", () => {
+  it("creates and lists loans for a property", async () => {
+    const property = await getOrCreateDefaultProperty();
+    await createLoan(interestOnly({ propertyId: property.id }));
+    expect(await listLoans(property.id)).toHaveLength(1);
   });
 
-  it("charges less interest each period as the balance falls", () => {
-    const rows = walk(dates, new Date("2026-04-01T00:00:00Z"), 7_100_000);
-    expect(rows[1].interestPence).toBeLessThan(rows[0].interestPence);
+  it("writes one interest line and one capital line per payment", async () => {
+    const property = await getOrCreateDefaultProperty();
+    const loan = await createLoan(interestOnly({ propertyId: property.id }));
+    expect(await generateLoanPayments(loan.id, new Date("2026-06-15"))).toBe(2); // 1 May, 1 Jun
+
+    const txns = await ledgerFor(loan.id);
+    expect(txns).toHaveLength(4);
+    expect(txns.filter((t) => t.category.name === INTEREST_CATEGORY_NAME)).toHaveLength(2);
+    expect(txns.filter((t) => t.category.name === CAPITAL_CATEGORY_NAME)).toHaveLength(2);
+    expect(txns.every((t) => t.direction === "out")).toBe(true);
+
+    // The whole point: interest is a fraction of the payment, capital is the rest.
+    const first = txns.filter((t) => t.date.toISOString().startsWith("2026-05-01"));
+    const interest = first.find((t) => t.category.kind === "finance")!;
+    const capital = first.find((t) => t.category.kind === "capital")!;
+    expect(interest.amountPence + capital.amountPence).toBe(75_000);
+    expect(interest.amountPence).toBeLessThan(20_000);
+    expect(capital.category.allowable).toBe(false);
   });
 
-  it("stops once the loan is fully redeemed", () => {
-    const rows = walk(dates, new Date("2026-04-01T00:00:00Z"), 60_000);
-    expect(rows).toHaveLength(1);
-    expect(rows[0].closingBalancePence).toBe(0);
+  it("is idempotent — re-running records nothing further", async () => {
+    const property = await getOrCreateDefaultProperty();
+    const loan = await createLoan(interestOnly({ propertyId: property.id }));
+    expect(await generateLoanPayments(loan.id, new Date("2026-06-15"))).toBe(2);
+    expect(await generateLoanPayments(loan.id, new Date("2026-06-15"))).toBe(0);
+    expect(await ledgerFor(loan.id)).toHaveLength(4);
+    expect(await generateLoanPayments(loan.id, new Date("2026-07-02"))).toBe(1);
   });
 
-  it("accrues nothing on a first payment falling on the start date", () => {
-    const rows = walk([new Date("2026-04-01T00:00:00Z")], new Date("2026-04-01T00:00:00Z"), 7_100_000);
-    expect(rows[0].interestPence).toBe(0);
-    expect(rows[0].capitalPence).toBe(75_000);
+  it("carries the closing balance forward so interest falls each period", async () => {
+    const property = await getOrCreateDefaultProperty();
+    const loan = await createLoan(interestOnly({ propertyId: property.id }));
+    await generateLoanPayments(loan.id, new Date("2026-07-15"));
+    const payments = await prisma.loanPayment.findMany({ where: { loanId: loan.id }, orderBy: { date: "asc" } });
+    expect(payments).toHaveLength(3);
+    expect(payments[1].openingBalancePence).toBe(payments[0].closingBalancePence);
+    expect(payments[2].openingBalancePence).toBe(payments[1].closingBalancePence);
+    expect(payments[1].computedInterestPence).toBeLessThan(payments[0].computedInterestPence);
+  });
+
+  it("omits a zero-value capital line when the payment is pure interest", async () => {
+    const property = await getOrCreateDefaultProperty();
+    // First period is 1 Apr -> 1 May (30 days) on £71k at 2.7% = 15,756p. Pay exactly that.
+    const loan = await createLoan(interestOnly({
+      propertyId: property.id, scheduledPaymentPence: 15_756,
+    }));
+    expect(await generateLoanPayments(loan.id, new Date("2026-05-15"))).toBe(1);
+    const txns = await ledgerFor(loan.id);
+    expect(txns).toHaveLength(1);
+    expect(txns[0].category.name).toBe(INTEREST_CATEGORY_NAME);
+    const payment = await prisma.loanPayment.findFirstOrThrow({ where: { loanId: loan.id } });
+    expect(payment.closingBalancePence).toBe(7_100_000);
+  });
+
+  it("stops and deactivates the loan on full redemption", async () => {
+    const property = await getOrCreateDefaultProperty();
+    const loan = await createLoan(interestOnly({
+      propertyId: property.id, openingBalancePence: 50_000,
+    }));
+    expect(await generateLoanPayments(loan.id, new Date("2026-08-15"))).toBe(1);
+    const refreshed = await prisma.loan.findUniqueOrThrow({ where: { id: loan.id } });
+    expect(refreshed.active).toBe(false);
+    const payment = await prisma.loanPayment.findFirstOrThrow({ where: { loanId: loan.id } });
+    expect(payment.closingBalancePence).toBe(0);
+  });
+
+  it("does not generate for a paused loan", async () => {
+    const property = await getOrCreateDefaultProperty();
+    const loan = await createLoan(interestOnly({ propertyId: property.id }));
+    await prisma.loan.update({ where: { id: loan.id }, data: { active: false } });
+    expect(await generateLoanPayments(loan.id, new Date("2026-06-15"))).toBe(0);
+  });
+
+  it("refuses to delete a loan that has recorded payments", async () => {
+    const property = await getOrCreateDefaultProperty();
+    const loan = await createLoan(interestOnly({ propertyId: property.id }));
+    await generateLoanPayments(loan.id, new Date("2026-06-15"));
+    await expect(deleteLoan(loan.id)).rejects.toThrow(/recorded payment/);
+    expect(await listLoans(property.id)).toHaveLength(1);
+  });
+
+  it("deletes a loan that has no payments", async () => {
+    const property = await getOrCreateDefaultProperty();
+    const loan = await createLoan(interestOnly({ propertyId: property.id }));
+    await deleteLoan(loan.id);
+    expect(await listLoans(property.id)).toHaveLength(0);
   });
 });
 ```
@@ -1043,7 +1210,11 @@ describe("loan payment generation sequencing", () => {
 - [ ] **Step 3: Run the tests**
 
 Run: `npx vitest run src/lib/data/loans.test.ts`
-Expected: PASS — 4 tests.
+Expected: PASS — 9 tests.
+
+If the "pure interest" test's expected figure (15,756p) is off by a penny or two, compute the
+real value with `computeInterestPence(7_100_000, 270, 30)` and use that — do not change
+`computeInterestPence` to fit the test.
 
 - [ ] **Step 4: Verify types**
 
