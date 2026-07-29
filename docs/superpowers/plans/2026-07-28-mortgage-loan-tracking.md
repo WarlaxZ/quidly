@@ -3042,6 +3042,66 @@ git commit -m "docs: describe mortgage and loan tracking"
 
 ---
 
+## Task 18: Close the gaps found by the final whole-feature review
+
+Per-task reviews all passed; these are integration gaps only a holistic pass could see.
+
+- [ ] **1. CRITICAL — the CSV import warning is cosmetic.**
+
+`confirmImportAction` (`src/app/(app)/import/actions.ts`) never calls `matchLoanPayment`. A row
+the preview flagged as a probable mortgage payment is imported anyway, as one line, under the
+batch's single category — fully deductible. **The feature's central goal is one click away from
+being defeated, through a path this feature itself added.**
+
+The design spec promised the review step would *offer* to split, not merely warn. "A suggestion,
+never automatic" meant "don't split without asking" — not "provide no way to avoid the mistake".
+
+Fix: make the safe path the default, with an explicit override.
+
+- `confirmImportAction` re-parses the CSV already, so it can re-run the matcher. Skip any row
+  with a loan match **unless** the form carries `includeLoanMatches=true`.
+- In the step-3 preview form, when any row matched, render an opt-in checkbox:
+  `Import these anyway — I'll split them myself` (name `includeLoanMatches`, value `true`).
+- The submit button's count must reflect what will actually be imported, so it doesn't promise
+  to import rows it will skip. Compute the importable count excluding matched rows unless the
+  box is ticked — the button label is server-rendered, so read the current `sp` state.
+- Keep the existing `Banner` and per-row warnings.
+
+- [ ] **2. Deleting a loan-generated transaction is not blocked.**
+
+The spec promised this would be "blocked with a message pointing at the loan". It was never
+implemented — `deleteTransactionAction` (`src/app/(app)/transactions/actions.ts`) deletes
+unconditionally. Doing so desyncs the ledger from the `LoanPayment` audit trail, breaking the
+loan detail page, `reconcileYear` and `capitalNoReliefPence`.
+
+Fix: in `deleteTransactionAction`, load the transaction first; if `loanPaymentId` is set, refuse
+with a user-facing message naming the loan and pointing at its page, e.g. *"That row is part of a
+loan payment. Edit or remove it from the loan instead."* Redirect with `?error=`.
+
+- [ ] **3. Deleting a property with a zero-payment loan surfaces a raw Prisma error.**
+
+`getPropertyCounts` (`src/lib/data/property.ts`) counts transactions and recurring rules but not
+loans, so `deletePropertyIfEmpty`'s friendly guard passes — then `Loan.propertyId`'s
+`ON DELETE RESTRICT` throws a raw FK-violation string at the user.
+
+Fix: add `loans` to `getPropertyCounts` and include it in the guard's condition and message.
+
+- [ ] **4. README's tax-accuracy caveat is stale.**
+
+It claims Quidly is "currently configured for the **2025-26** tax year; other years fall back to
+2025-26". Untrue: `CONFIGURED_TAX_YEARS` is `["2025-26", "2026-27", "2027-28"]` and `bands.ts`
+carries the Finance Act 2026 property-rate surcharge. Newly consequential because this feature
+surfaces the 20%→22% Section 24 change in its effective-rate readout.
+
+Fix: state the real configured range, and that the Section 24 reducer rises to 22% for
+England/Wales/NI in 2027-28 while Scotland stays at 20% pending Holyrood.
+
+- [ ] **5. Verify**
+
+`npm test` (one known pre-existing failure only), `npx tsc --noEmit`, and the build via a
+throwaway database. Add tests for items 1-3 — each is a guard, and an untested guard is a guard
+that quietly stops working.
+
 ## Self-review notes
 
 **Spec coverage:** every spec section maps to a task — data model (1), seed category (2),
