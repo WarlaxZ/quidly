@@ -2,7 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { rm } from "node:fs/promises";
-import { createTransaction, deleteTransaction } from "../../../lib/data/transactions";
+import { createTransaction, deleteTransaction, getTransaction, loanDeleteBlockMessage } from "../../../lib/data/transactions";
 import { parseAmountToPence } from "../../../lib/money/parseAmount";
 import type { Direction } from "../../../lib/tax/types";
 import { requireSession } from "../../../lib/auth/session";
@@ -65,7 +65,12 @@ export async function addTransactionAction(formData: FormData) {
 export async function deleteTransactionAction(formData: FormData) {
   await requireSession();
   const id = String(formData.get("id") ?? "");
-  if (id) await deleteTransaction(id);
+  if (id) {
+    const transaction = await getTransaction(id);
+    const blockMessage = transaction ? loanDeleteBlockMessage(transaction) : null;
+    if (blockMessage) redirect(`/transactions?error=${encodeURIComponent(blockMessage)}`);
+    await deleteTransaction(id);
+  }
   revalidatePath("/transactions");
   redirect("/transactions?ok=Transaction+deleted");
 }

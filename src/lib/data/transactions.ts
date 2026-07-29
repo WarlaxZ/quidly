@@ -31,7 +31,10 @@ export function listTransactionsForTaxYear(propertyId: string, taxYear: string) 
   });
 }
 export function getTransaction(id: string) {
-  return prisma.transaction.findUnique({ where: { id }, include: { category: true, vendor: true, attachment: true } });
+  return prisma.transaction.findUnique({
+    where: { id },
+    include: { category: true, vendor: true, attachment: true, loanPayment: { include: { loan: true } } },
+  });
 }
 export function createTransaction(input: TransactionInput) {
   return prisma.transaction.create({ data: input });
@@ -41,6 +44,20 @@ export function updateTransaction(id: string, input: Partial<TransactionInput>) 
 }
 export function deleteTransaction(id: string) {
   return prisma.transaction.delete({ where: { id } });
+}
+
+/**
+ * A transaction generated from a loan payment carries the split between deductible
+ * interest and non-deductible capital. Deleting it directly (rather than through the
+ * loan) would desync the ledger from that audit trail. Returns a user-facing message
+ * naming the loan when deletion should be refused, or null when it's safe to proceed.
+ */
+export function loanDeleteBlockMessage(
+  transaction: { loanPaymentId: string | null; loanPayment?: { loan: { name: string } } | null },
+): string | null {
+  if (!transaction.loanPaymentId) return null;
+  const loanName = transaction.loanPayment?.loan.name ?? "its loan";
+  return `That row is part of a payment on ${loanName}. Remove it from the loan instead.`;
 }
 export function listTransactionsFiltered(propertyId: string | null, filter: TransactionFilter) {
   return prisma.transaction.findMany({
