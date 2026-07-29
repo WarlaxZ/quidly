@@ -77,6 +77,9 @@ and produces figures and a PDF rather than submitting to HMRC for you.
 ## Features
 
 - **Bookkeeping** — transactions, recurring rules, one-click bank-CSV import, multi-property.
+- **Mortgages & loans** — model a loan once and Quidly splits every payment into deductible
+  interest (SA105 box 44) and non-deductible capital repayment, shows your effective rate
+  after the Section 24 reducer, and reconciles the year against your lender's statement.
 - **Receipt scanning** — optional AI extraction using your own Anthropic key.
 - **SA105 & personal tax** — £1,000 property allowance, Section 24 finance-cost reducer, Scottish bands, and SA105 PDF export.
 - **Limited companies** — corporation tax (including marginal relief), dividends, director's loan s455 + benefit-in-kind.
