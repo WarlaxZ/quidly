@@ -87,6 +87,16 @@ export default async function ImportPage({ searchParams }: { searchParams: Promi
           <p className="text-sm text-muted">{importable} row(s) will be imported. Duplicates and unparseable rows are skipped.</p>
         </section>
 
+        {preview.some((r) => r.loanMatch) && (
+          <section className="reveal" style={{ animationDelay: "90ms" }}>
+            <Banner variant="error">
+              {preview.filter((r) => r.loanMatch).length} row(s) look like mortgage payments.
+              Importing those as a single line would treat the whole payment as deductible —
+              record them from the loan page so the interest and capital are split.
+            </Banner>
+          </section>
+        )}
+
         <section className="reveal" style={{ animationDelay: "120ms" }}>
           <div className="card overflow-hidden overflow-x-auto">
             <table className="ledger">
@@ -108,6 +118,14 @@ export default async function ImportPage({ searchParams }: { searchParams: Promi
                     <td className="text-muted">{r.description ?? ""}</td>
                     <td className={!r.ok ? "text-negative text-sm" : r.duplicate ? "text-faint text-sm" : "text-muted text-sm"}>
                       {!r.ok ? `error: ${r.error}` : r.duplicate ? "duplicate (skip)" : "import"}
+                      {r.loanMatch && (
+                        <span className="mt-1 block text-xs text-negative">
+                          Looks like a payment on {r.loanMatch.name}. Only the interest is
+                          deductible — record it from{" "}
+                          <a href={`/loans/${r.loanMatch.loanId}`} className="underline">the loan page</a>{" "}
+                          instead of importing it as one line.
+                        </span>
+                      )}
                     </td>
                   </tr>
                 ))}

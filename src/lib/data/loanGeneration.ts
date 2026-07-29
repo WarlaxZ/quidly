@@ -5,6 +5,7 @@ import { recurringOccurrences, type OccurrenceRule } from "../recurring/occurren
 import { derivePayment, daysBetween, type LoanTerms } from "../loans/schedule";
 import { INTEREST_CATEGORY_NAME, CAPITAL_CATEGORY_NAME } from "../loans/categories";
 import { taxYearRange } from "../tax/taxYear";
+import { type LoanCandidate } from "../import/loanMatch";
 
 function toLoanOccurrenceRule(
   loan: Pick<
@@ -236,6 +237,29 @@ export async function applyYearVariance(
   const current = last.actualInterestPence ?? last.computedInterestPence;
   // derivePayment throws if this pushes interest above the payment — surfaced to the user.
   await setActualInterest(lastPaymentId, current + delta);
+}
+
+/**
+ * Active loans for a property with their scheduled payment dates, for the CSV-import
+ * matcher. Unlike generation this lists dates from the loan's origin regardless of what has
+ * already been recorded — a landlord importing a statement should still be warned about a
+ * row that duplicates a payment they entered by hand, because importing it as one line would
+ * file the whole amount as deductible.
+ */
+export async function loanPaymentCandidates(
+  propertyId: string,
+  asOf: Date,
+): Promise<LoanCandidate[]> {
+  const loans = await prisma.loan.findMany({ where: { propertyId, active: true } });
+  return loans.map((loan) => ({
+    loanId: loan.id,
+    name: loan.name,
+    scheduledPaymentPence: loan.scheduledPaymentPence,
+    scheduledDates: recurringOccurrences(
+      { ...toLoanOccurrenceRule(loan), lastGeneratedDate: loan.startDate },
+      asOf,
+    ),
+  }));
 }
 
 /** This tax year's capital repayments for a loan — money that attracted no relief. */

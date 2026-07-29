@@ -5,20 +5,44 @@ import { requireSession } from "../../../lib/auth/session";
 import { listTransactions, bulkCreateTransactions } from "../../../lib/data/transactions";
 import { parseCsv } from "../../../lib/reports/csv";
 import { mapImportRow, isDuplicate, type ColumnMapping } from "../../../lib/import/bankImport";
+import { matchLoanPayment } from "../../../lib/import/loanMatch";
+import { loanPaymentCandidates } from "../../../lib/data/loanGeneration";
 
-export interface PreviewRow { ok: boolean; date?: string; direction?: string; amountPence?: number; description?: string; error?: string; duplicate?: boolean; }
+export interface PreviewRow {
+  ok: boolean; date?: string; direction?: string; amountPence?: number;
+  description?: string; error?: string; duplicate?: boolean;
+  /** Set when this debit looks like a payment on one of the property's loans. */
+  loanMatch?: { loanId: string; name: string };
+}
 
 export async function buildPreview(csvText: string, mapping: ColumnMapping, propertyId: string): Promise<PreviewRow[]> {
   await requireSession();
   const existing = await listTransactions(propertyId);
   const { rows } = parseCsv(csvText);
-  return rows.map((row) => {
-    try {
-      const m = mapImportRow(row, mapping);
-      return { ok: true, date: m.date.toISOString().slice(0, 10), direction: m.direction, amountPence: m.amountPence, description: m.description, duplicate: isDuplicate(m, existing) };
-    } catch (e) {
-      return { ok: false, error: (e as Error).message };
-    }
+
+  const parsed = rows.map((row) => {
+    try { return { m: mapImportRow(row, mapping) }; }
+    catch (e) { return { error: (e as Error).message }; }
+  });
+
+  // Walk occurrences only as far as the statement actually goes.
+  const latest = parsed.reduce<Date | null>(
+    (max, p) => (p.m && (!max || p.m.date > max) ? p.m.date : max), null,
+  );
+  const candidates = latest ? await loanPaymentCandidates(propertyId, latest) : [];
+
+  return parsed.map((p) => {
+    if (!p.m) return { ok: false, error: p.error };
+    const match = matchLoanPayment(p.m, candidates);
+    return {
+      ok: true,
+      date: p.m.date.toISOString().slice(0, 10),
+      direction: p.m.direction,
+      amountPence: p.m.amountPence,
+      description: p.m.description,
+      duplicate: isDuplicate(p.m, existing),
+      ...(match ? { loanMatch: { loanId: match.loanId, name: match.name } } : {}),
+    };
   });
 }
 
