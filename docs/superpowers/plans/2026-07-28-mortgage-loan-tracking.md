@@ -2813,87 +2813,165 @@ git commit -m "feat(loans): suggest loan splits for imported bank debits"
 
 ---
 
-## Task 16: Wire the matcher into the import review
+## Task 16: Flag probable loan payments in the CSV import preview
+
+**This task was rewritten after reading the real import flow.** The original version targeted
+`src/app/(app)/import/review/page.tsx` and assumed a per-row category `<select>` to hang a
+hint beside. Neither exists:
+
+- There is no `import/review/` route. The whole flow is one page,
+  `src/app/(app)/import/page.tsx`, with three steps driven by search params (paste CSV →
+  map columns → preview + confirm). The `review/` directory that misled the plan belongs to
+  receipt scanning (`src/app/(app)/scan/review/`).
+- The import applies **one category to every row** (`confirmImportAction` reads a single
+  `categoryId`). There is no per-row category control.
+
+That second point makes the warning *more* important, not less: a landlord importing a
+statement picks one category for the batch, so a £750 mortgage debit would be filed whole
+under whatever they chose — the exact overclaim this feature exists to prevent.
+
+The right seam is `PreviewRow`, rendered in the step-3 preview table's Status column.
 
 **Files:**
-- Modify: `src/app/(app)/import/review/page.tsx`
+- Modify: `src/lib/data/loanGeneration.ts` (add `loanPaymentCandidates`)
+- Modify: `src/app/(app)/import/actions.ts` (`PreviewRow` + `buildPreview`)
+- Modify: `src/app/(app)/import/page.tsx` (render the warning)
 
-- [ ] **Step 1: Read the review page to find the per-row rendering**
+- [ ] **Step 1: Expose the candidate list**
 
-Run: `cat "src/app/(app)/import/review/page.tsx"`
+Append to `src/lib/data/loanGeneration.ts`:
 
-Identify where each candidate row renders its category `<select>`.
+```ts
+import { type LoanCandidate } from "../import/loanMatch";
 
-- [ ] **Step 2: Build the candidate list and surface the hint**
-
-At the top of the review page's data loading, add:
-
-```tsx
-import { listLoans } from "../../../../lib/data/loans";
-import { matchLoanPayment, type LoanCandidate } from "../../../../lib/import/loanMatch";
-import { recurringOccurrences, type IntervalUnit } from "../../../../lib/recurring/occurrences";
-
-/** Scheduled dates for each active loan, for the import matcher. */
-async function loanCandidates(propertyId: string | null, asOf: Date): Promise<LoanCandidate[]> {
-  const loans = await listLoans(propertyId);
-  return loans
-    .filter((l) => l.active)
-    .map((l) => ({
-      loanId: l.id,
-      name: l.name,
-      scheduledPaymentPence: l.scheduledPaymentPence,
-      scheduledDates: recurringOccurrences(
-        {
-          intervalUnit: l.intervalUnit as IntervalUnit,
-          intervalCount: l.intervalCount,
-          dayOfWeek: l.dayOfWeek,
-          dayOfMonth: l.dayOfMonth,
-          monthOfYear: l.monthOfYear,
-          startDate: l.startDate,
-          endDate: l.termEndDate,
-          lastGeneratedDate: null,
-        },
-        asOf,
-      ),
-    }));
+/**
+ * Active loans for a property with their scheduled payment dates, for the CSV-import
+ * matcher. Unlike generation this lists dates from the loan's origin regardless of what has
+ * already been recorded — a landlord importing a statement should still be warned about a
+ * row that duplicates a payment they entered by hand, because importing it as one line would
+ * file the whole amount as deductible.
+ */
+export async function loanPaymentCandidates(
+  propertyId: string,
+  asOf: Date,
+): Promise<LoanCandidate[]> {
+  const loans = await prisma.loan.findMany({ where: { propertyId, active: true } });
+  return loans.map((loan) => ({
+    loanId: loan.id,
+    name: loan.name,
+    scheduledPaymentPence: loan.scheduledPaymentPence,
+    scheduledDates: recurringOccurrences(
+      { ...toLoanOccurrenceRule(loan), lastGeneratedDate: loan.startDate },
+      asOf,
+    ),
+  }));
 }
 ```
 
-Then, for each rendered row, compute and display the hint beneath the category select:
+- [ ] **Step 2: Flag matched rows in the preview**
 
-```tsx
-{(() => {
-  const match = matchLoanPayment(
-    { date: row.date, amountPence: row.amountPence, direction: row.direction },
-    candidates,
-  );
-  return match ? (
-    <p className="mt-1 text-xs text-muted">
-      Looks like a payment on <strong>{match.name}</strong>. Only the interest is
-      deductible — record it from{" "}
-      <a href={`/loans/${match.loanId}`} className="underline">the loan page</a> to split
-      it, rather than importing it as one line.
-    </p>
-  ) : null;
-})()}
+In `src/app/(app)/import/actions.ts`, extend `PreviewRow` and `buildPreview`:
+
+```ts
+export interface PreviewRow {
+  ok: boolean; date?: string; direction?: string; amountPence?: number;
+  description?: string; error?: string; duplicate?: boolean;
+  /** Set when this debit looks like a payment on one of the property's loans. */
+  loanMatch?: { loanId: string; name: string };
+}
 ```
 
-`candidates` comes from `await loanCandidates(active.propertyId, new Date())` alongside the
-page's existing data loads.
+Add the imports:
 
-- [ ] **Step 3: Verify types**
+```ts
+import { matchLoanPayment } from "../../../lib/import/loanMatch";
+import { loanPaymentCandidates } from "../../../lib/data/loanGeneration";
+```
+
+In `buildPreview`, load candidates once (bounded by the latest row date so the occurrence
+walk stays short), then annotate each parsed row:
+
+```ts
+export async function buildPreview(csvText: string, mapping: ColumnMapping, propertyId: string): Promise<PreviewRow[]> {
+  await requireSession();
+  const existing = await listTransactions(propertyId);
+  const { rows } = parseCsv(csvText);
+
+  const parsed = rows.map((row) => {
+    try { return { m: mapImportRow(row, mapping) }; }
+    catch (e) { return { error: (e as Error).message }; }
+  });
+
+  // Walk occurrences only as far as the statement actually goes.
+  const latest = parsed.reduce<Date | null>(
+    (max, p) => (p.m && (!max || p.m.date > max) ? p.m.date : max), null,
+  );
+  const candidates = latest ? await loanPaymentCandidates(propertyId, latest) : [];
+
+  return parsed.map((p) => {
+    if (!p.m) return { ok: false, error: p.error };
+    const match = matchLoanPayment(p.m, candidates);
+    return {
+      ok: true,
+      date: p.m.date.toISOString().slice(0, 10),
+      direction: p.m.direction,
+      amountPence: p.m.amountPence,
+      description: p.m.description,
+      duplicate: isDuplicate(p.m, existing),
+      ...(match ? { loanMatch: { loanId: match.loanId, name: match.name } } : {}),
+    };
+  });
+}
+```
+
+`confirmImportAction` is deliberately **unchanged** — the flag is advisory. Blocking the
+import would be the wrong call: the user may have a legitimate reason, and silently dropping
+rows they asked to import is worse than warning them.
+
+- [ ] **Step 3: Render the warning**
+
+In `src/app/(app)/import/page.tsx`'s step-3 preview table, replace the status cell so a
+matched row shows the warning alongside its normal status:
+
+```tsx
+                    <td className={!r.ok ? "text-negative text-sm" : r.duplicate ? "text-faint text-sm" : "text-muted text-sm"}>
+                      {!r.ok ? `error: ${r.error}` : r.duplicate ? "duplicate (skip)" : "import"}
+                      {r.loanMatch && (
+                        <span className="mt-1 block text-xs text-negative">
+                          Looks like a payment on {r.loanMatch.name}. Only the interest is
+                          deductible — record it from{" "}
+                          <a href={`/loans/${r.loanMatch.loanId}`} className="underline">the loan page</a>{" "}
+                          instead of importing it as one line.
+                        </span>
+                      )}
+                    </td>
+```
+
+Also add a summary line above the table, so the warning is visible without scanning every row:
+
+```tsx
+        {preview.some((r) => r.loanMatch) && (
+          <Banner variant="error">
+            {preview.filter((r) => r.loanMatch).length} row(s) look like mortgage payments.
+            Importing those as a single line would treat the whole payment as deductible —
+            record them from the loan page so the interest and capital are split.
+          </Banner>
+        )}
+```
+
+- [ ] **Step 4: Verify types and build**
 
 Run: `npx tsc --noEmit`
 Expected: no errors.
 
-- [ ] **Step 4: Commit**
+Run the build per Task 17's note about the throwaway database.
+
+- [ ] **Step 5: Commit**
 
 ```bash
-git add "src/app/(app)/import/review/page.tsx"
-git commit -m "feat(loans): flag probable loan payments during CSV import"
+git add src/lib/data/loanGeneration.ts "src/app/(app)/import/actions.ts" "src/app/(app)/import/page.tsx"
+git commit -m "feat(loans): warn about probable loan payments in the CSV import preview"
 ```
-
----
 
 ## Task 17: Documentation and final verification
 
