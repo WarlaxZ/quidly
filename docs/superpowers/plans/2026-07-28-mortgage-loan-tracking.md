@@ -3068,9 +3068,12 @@ is `getOrCreateProfile`, not `getTaxProfile`; `sa105Boxes()` skips transactions 
 box, so capital repayments cannot leak into any SA105 figure; `propertySurchargeBps` returns
 200 for 2027-28 E/W/NI and 0 for Scotland.
 
-**Task 16 is the one task with an unread dependency** — `src/app/(app)/import/review/page.tsx`
-was not read while planning. Read it first and fit the hint into its existing per-row
-rendering rather than restructuring it.
+**Task 16's unread dependency turned out to be a defect** — and this note is kept as the
+record. The plan originally targeted `src/app/(app)/import/review/page.tsx` and assumed a
+per-row category `<select>`. Neither existed: the import is a single three-step page, and it
+applies one category to the whole batch. Task 16 was rewritten against the real
+`import/page.tsx` / `import/actions.ts` before implementation. The lesson generalises — the
+only task planned against unread code was the only task whose target file did not exist.
 
 **Arithmetic in the tests was hand-checked**: £71,000 at 270bps over 31 days is 16,281p;
 over 28 days 14,706p; £100,000 at 500bps over 30 days is 41,096p; 270bps after a 2000bps
