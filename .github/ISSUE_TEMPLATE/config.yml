@@ -1,0 +1,15 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question or setup help
+    url: https://github.com/WarlaxZ/quidly/discussions
+    about: >
+      Ask in Discussions rather than opening an issue — setup, Docker, and
+      "how do I record X" questions are answered there.
+  - name: Report a security vulnerability
+    url: https://github.com/WarlaxZ/quidly/security/advisories/new
+    about: Please report privately, not in a public issue.
+  - name: Official HMRC guidance
+    url: https://www.gov.uk/renting-out-a-property
+    about: >
+      Quidly produces estimates, not tax advice. For what you actually owe,
+      check HMRC or ask an accountant.

@@ -1,0 +1,105 @@
+name: Tax calculation or rate issue
+description: A figure Quidly produces looks wrong, or a rate needs updating
+labels: ["bug", "tax-accuracy"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Tax accuracy reports are the most useful issues this project gets.
+
+        Quidly produces **estimates, not advice** — but an estimate should still
+        be right. Please use made-up round numbers that still show the problem
+        rather than your real figures.
+
+  - type: dropdown
+    id: calculation
+    attributes:
+      label: Which calculation?
+      options:
+        - SA105 box value
+        - £1,000 property allowance
+        - Section 24 finance-cost reducer
+        - Income tax bands (rUK)
+        - Income tax bands (Scottish)
+        - National Insurance
+        - Corporation tax / marginal relief
+        - Dividend tax
+        - Director's loan (s455 or benefit-in-kind)
+        - Mileage allowance
+        - Use of home
+        - Salary-vs-dividend optimiser
+        - What-if planner
+        - Something else
+    validations:
+      required: true
+
+  - type: dropdown
+    id: tax-year
+    attributes:
+      label: Tax year
+      options:
+        - 2025-26
+        - 2026-27
+        - 2027-28
+        - Earlier year
+    validations:
+      required: true
+
+  - type: textarea
+    id: inputs
+    attributes:
+      label: Inputs
+      description: The figures you entered, using illustrative round numbers.
+      placeholder: |
+        Rental income: £12,000
+        Mortgage interest: £4,000
+        Allowable expenses: £2,000
+        Other (employment) income: £30,000
+        Property allowance: not claimed
+    validations:
+      required: true
+
+  - type: input
+    id: expected
+    attributes:
+      label: Expected figure
+      placeholder: "£1,600 finance-cost reducer"
+    validations:
+      required: true
+
+  - type: input
+    id: actual
+    attributes:
+      label: Figure Quidly produced
+      placeholder: "£800"
+    validations:
+      required: true
+
+  - type: textarea
+    id: source
+    attributes:
+      label: Source
+      description: >
+        Link the HMRC page, helpsheet, or SA105 note supporting the expected
+        figure. This is what makes the fix verifiable — please don't skip it.
+      placeholder: https://www.gov.uk/guidance/income-tax-when-you-rent-out-a-property-working-out-your-rental-income
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: v0.1.0
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: The figures above are illustrative, not my real tax data
+          required: true
+        - label: I understand Quidly gives estimates and is not affiliated with HMRC
+          required: true

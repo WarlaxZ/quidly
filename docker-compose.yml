@@ -1,7 +1,9 @@
 services:
   quidly:
-    build: .
-    image: quidly
+    # Prebuilt multi-arch image (linux/amd64 + linux/arm64).
+    # To build from source instead:
+    #   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+    image: ghcr.io/warlaxz/quidly:latest
     env_file: .env
     environment:
       DATABASE_URL: file:/data/quidly.db

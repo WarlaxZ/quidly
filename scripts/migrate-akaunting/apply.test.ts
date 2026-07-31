@@ -2,8 +2,8 @@ import { describe, expect, it, beforeAll, afterAll } from "vitest";
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 import { PrismaClient } from "@prisma/client";
 import Database from "better-sqlite3";
-import { readFileSync, readdirSync, rmSync } from "node:fs";
-import { join } from "node:path";
+import { mkdirSync, readFileSync, readdirSync, rmSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { applyPlan } from "./apply";
 import type { SourceSnapshot, Mapping } from "./types";
 
@@ -11,6 +11,9 @@ const TMP = join(process.cwd(), "akaunting-migration", "test-apply.db");
 let prisma: PrismaClient;
 
 beforeAll(async () => {
+  // akaunting-migration/ is git-ignored, so it doesn't exist in a fresh clone
+  // or in CI — better-sqlite3 won't create the parent directory itself.
+  mkdirSync(dirname(TMP), { recursive: true });
   rmSync(TMP, { force: true });
   // Build schema by executing every migration SQL in order.
   const raw = new Database(TMP);
