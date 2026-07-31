@@ -1,0 +1,9 @@
+# Overlay that builds Quidly from this checkout instead of pulling the
+# published image. Useful for development, or if you'd rather not trust a
+# prebuilt binary with your financial data.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+services:
+  quidly:
+    build: .
+    image: quidly-local
