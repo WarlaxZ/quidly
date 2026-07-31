@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# A newer push to the same branch supersedes an in-flight run.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test, typecheck & build
+    runs-on: ubuntu-latest
+
+    env:
+      # Throwaway SQLite file and secret — CI never touches real data.
+      DATABASE_URL: file:./ci.db
+      SESSION_SECRET: ci-session-secret-at-least-32-characters-long
+
+    steps:
+      - uses: actions/checkout@v7
+
+      # Node 22 matches the Dockerfile's runtime, so CI fails on the same
+      # things production does.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Prisma v7: the datasource URL comes from prisma.config.ts, and
+      # migrations are hand-authored SQL applied with `migrate deploy`.
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Apply migrations
+        run: npx prisma migrate deploy
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      # After `next build`, so the generated route types under .next/types are
+      # on disk and get checked too.
+      - name: Typecheck
+        run: npm run typecheck
