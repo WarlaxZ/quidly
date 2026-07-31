@@ -1,0 +1,118 @@
+name: Bug report
+description: Something isn't working the way it should
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting this. Please don't paste real financial data —
+        redact figures and addresses, or make up equivalent numbers.
+
+        If this is a security issue, **stop** and use
+        [private vulnerability reporting](https://github.com/WarlaxZ/quidly/security/advisories/new)
+        instead.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What did you see, and what did you expect instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Go to Transactions
+        2. Add an expense of £120 against property X
+        3. Open the SA105 page
+        4. Box 20 shows £0 instead of £120
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install-method
+    attributes:
+      label: How are you running Quidly?
+      options:
+        - Docker (docker compose)
+        - Docker (ghcr.io image)
+        - Local dev (npm run dev)
+        - Local production (npm run build && npm start)
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      description: The release tag, image tag, or `git rev-parse --short HEAD`.
+      placeholder: v0.1.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of the app?
+      options:
+        - Bookkeeping (transactions, recurring, vendors)
+        - Bank CSV import
+        - Receipt scanning (AI extraction)
+        - SA105 / personal tax
+        - Limited company (corporation tax, dividends, director's loan)
+        - What-if planner / salary-vs-dividend optimiser
+        - Deductions assistant (mileage, use of home)
+        - Akaunting migration
+        - Auth / login / sessions
+        - Setup, Docker, or configuration
+        - UI / theming
+        - Something else
+    validations:
+      required: true
+
+  - type: dropdown
+    id: tax-year
+    attributes:
+      label: Tax year involved
+      description: Leave as N/A if this isn't a tax calculation issue.
+      options:
+        - N/A
+        - 2025-26
+        - 2026-27
+        - 2027-28
+        - Earlier year
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: >
+        Relevant output from `docker compose logs quidly` or the dev server, plus
+        any browser console errors. Redact secrets.
+      render: shell
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: |
+        Host OS: Debian 12
+        Browser: Firefox 141
+        Reverse proxy: Caddy
+        COOKIE_SECURE: unset
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and this isn't a duplicate
+          required: true
+        - label: I've removed any real financial or personal data from this report
+          required: true

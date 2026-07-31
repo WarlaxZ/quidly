@@ -1,0 +1,65 @@
+name: Feature request
+description: Suggest something Quidly should do
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before writing this up, note two things that are **deliberately out of
+        scope**: multi-user / multi-tenant support (each install is single-user),
+        and tax regimes for countries other than the UK. Requests for either will
+        be closed — though forking is a perfectly good answer, and the AGPL is
+        there for that.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you hitting?
+      description: >
+        Describe the situation rather than the solution. "I have three properties
+        with different mortgage rates and can't see which is loss-making" is more
+        useful than "add a per-property P&L chart".
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like Quidly to do?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of the app?
+      options:
+        - Bookkeeping (transactions, recurring, vendors)
+        - Bank CSV import
+        - Receipt scanning (AI extraction)
+        - SA105 / personal tax
+        - Limited company
+        - What-if planner / optimiser
+        - Deductions assistant
+        - Migration from other software
+        - Setup, Docker, or configuration
+        - UI / theming
+        - Something else
+    validations:
+      required: true
+
+  - type: textarea
+    id: workaround
+    attributes:
+      label: How are you working around it today?
+      description: Spreadsheet, another tool, manual calculation, not at all?
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and discussions for this idea
+          required: true
+        - label: This isn't multi-user support or a non-UK tax regime
+          required: true
