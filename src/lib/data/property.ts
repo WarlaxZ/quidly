@@ -25,18 +25,19 @@ export function getProperty(id: string) {
   return prisma.property.findUnique({ where: { id } });
 }
 
-export async function getPropertyCounts(id: string): Promise<{ transactions: number; recurring: number }> {
-  const [transactions, recurring] = await Promise.all([
+export async function getPropertyCounts(id: string): Promise<{ transactions: number; recurring: number; loans: number }> {
+  const [transactions, recurring, loans] = await Promise.all([
     prisma.transaction.count({ where: { propertyId: id } }),
     prisma.recurringRule.count({ where: { propertyId: id } }),
+    prisma.loan.count({ where: { propertyId: id } }),
   ]);
-  return { transactions, recurring };
+  return { transactions, recurring, loans };
 }
 
 export async function deletePropertyIfEmpty(id: string): Promise<void> {
   const counts = await getPropertyCounts(id);
-  if (counts.transactions > 0 || counts.recurring > 0) {
-    throw new Error("Can't delete a property that still has transactions or recurring rules.");
+  if (counts.transactions > 0 || counts.recurring > 0 || counts.loans > 0) {
+    throw new Error("Can't delete a property that still has transactions, recurring rules or loans.");
   }
   await prisma.property.delete({ where: { id } });
 }

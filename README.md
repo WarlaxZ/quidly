@@ -77,6 +77,9 @@ and produces figures and a PDF rather than submitting to HMRC for you.
 ## Features
 
 - **Bookkeeping** — transactions, recurring rules, one-click bank-CSV import, multi-property.
+- **Mortgages & loans** — model a loan once and Quidly splits every payment into deductible
+  interest (SA105 box 44) and non-deductible capital repayment, shows your effective rate
+  after the Section 24 reducer, and reconciles the year against your lender's statement.
 - **Receipt scanning** — optional AI extraction using your own Anthropic key.
 - **SA105 & personal tax** — £1,000 property allowance, Section 24 finance-cost reducer, Scottish bands, and SA105 PDF export.
 - **Limited companies** — corporation tax (including marginal relief), dividends, director's loan s455 + benefit-in-kind.
@@ -212,6 +215,11 @@ Quidly produces **estimates, not advice** — verify HMRC rates each April again
 the official guidance. Rates are configured for the **2025-26, 2026-27 and
 2027-28** tax years; years outside that range fall back to the latest configured
 year with an in-app notice.
+
+**Finance-cost relief changes in 2027-28.** The Section 24 reducer rises from 20% to 22%
+for England, Wales and Northern Ireland from 6 April 2027, alongside the matching
++2pp property-income rate surcharge. Scotland stays at 20% pending Holyrood adopting an
+equivalent surcharge, so its 2027-28 figures are flagged provisional in-app.
 
 **Quidly does not submit anything to HMRC.** It produces the figures and an SA105
 PDF; you or your accountant do the filing. Making Tax Digital for Income Tax is

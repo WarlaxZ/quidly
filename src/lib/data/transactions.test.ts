@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { createTransaction, listTransactions, listTransactionsFiltered, listTransactionsForTaxYear, updateTransaction, deleteTransaction } from "./transactions";
+import { createTransaction, listTransactions, listTransactionsFiltered, listTransactionsForTaxYear, updateTransaction, deleteTransaction, getTransaction, loanDeleteBlockMessage } from "./transactions";
 import { getOrCreateDefaultProperty } from "./property";
+import { createLoan } from "./loans";
 import { resetDb } from "../../../test/setup/resetDb";
 import { prisma } from "../db";
 
@@ -118,5 +119,49 @@ describe("transactions data layer", () => {
     // Passing null clears it
     await updateTransaction(t.id, { attachmentId: null });
     expect((await getTransaction(t.id))?.attachmentId).toBeNull();
+  });
+
+  describe("loanDeleteBlockMessage", () => {
+    it("returns null for a transaction with no loan payment", async () => {
+      const property = await getOrCreateDefaultProperty();
+      const categoryId = await rentCategoryId();
+      const t = await createTransaction({ propertyId: property.id, categoryId, date: new Date("2025-06-01"), amountPence: 5000, direction: "in" });
+      const fetched = await getTransaction(t.id);
+      expect(fetched).not.toBeNull();
+      expect(loanDeleteBlockMessage(fetched!)).toBeNull();
+    });
+
+    it("names the loan when the transaction was generated from a loan payment", async () => {
+      const property = await getOrCreateDefaultProperty();
+      const categoryId = await rentCategoryId();
+      const loan = await createLoan({
+        propertyId: property.id,
+        name: "Buy-to-let mortgage",
+        kind: "interestOnly",
+        openingBalancePence: 7_100_000,
+        annualRateBps: 270,
+        scheduledPaymentPence: 75_000,
+        intervalUnit: "MONTH",
+        intervalCount: 1,
+        startDate: new Date("2025-01-01"),
+      });
+      const loanPayment = await prisma.loanPayment.create({
+        data: {
+          loanId: loan.id,
+          date: new Date("2025-06-01"),
+          openingBalancePence: 7_100_000,
+          computedInterestPence: 15_975,
+          paidPence: 75_000,
+          closingBalancePence: 7_040_975,
+        },
+      });
+      const t = await createTransaction({ propertyId: property.id, categoryId, date: new Date("2025-06-01"), amountPence: 75_000, direction: "out" });
+      await prisma.transaction.update({ where: { id: t.id }, data: { loanPaymentId: loanPayment.id } });
+      const fetched = await getTransaction(t.id);
+      expect(fetched).not.toBeNull();
+      const message = loanDeleteBlockMessage(fetched!);
+      expect(message).toContain("Buy-to-let mortgage");
+      expect(message).toContain("Remove it from the loan instead");
+    });
   });
 });

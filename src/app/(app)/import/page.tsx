@@ -77,6 +77,8 @@ export default async function ImportPage({ searchParams }: { searchParams: Promi
     const mapping = { dateCol: Number(sp.dateCol), amountCol: Number(sp.amountCol), descriptionCol: Number(sp.descriptionCol) };
     const preview: PreviewRow[] = await buildPreview(csv, mapping, propertyId);
     const importable = preview.filter((r) => r.ok && !r.duplicate).length;
+    const loanMatchCount = preview.filter((r) => r.ok && !r.duplicate && r.loanMatch).length;
+    const importableExcludingMatches = importable - loanMatchCount;
     return (
       <div className="mx-auto max-w-4xl space-y-8">
         <div className="reveal" style={{ animationDelay: "0ms" }}>
@@ -84,8 +86,18 @@ export default async function ImportPage({ searchParams }: { searchParams: Promi
         </div>
 
         <section className="reveal" style={{ animationDelay: "60ms" }}>
-          <p className="text-sm text-muted">{importable} row(s) will be imported. Duplicates and unparseable rows are skipped.</p>
+          <p className="text-sm text-muted">{importableExcludingMatches} row(s) will be imported. Duplicates and unparseable rows are skipped.</p>
         </section>
+
+        {preview.some((r) => r.loanMatch) && (
+          <section className="reveal" style={{ animationDelay: "90ms" }}>
+            <Banner variant="error">
+              {preview.filter((r) => r.loanMatch).length} row(s) look like mortgage payments.
+              Importing those as a single line would treat the whole payment as deductible —
+              record them from the loan page so the interest and capital are split.
+            </Banner>
+          </section>
+        )}
 
         <section className="reveal" style={{ animationDelay: "120ms" }}>
           <div className="card overflow-hidden overflow-x-auto">
@@ -108,6 +120,14 @@ export default async function ImportPage({ searchParams }: { searchParams: Promi
                     <td className="text-muted">{r.description ?? ""}</td>
                     <td className={!r.ok ? "text-negative text-sm" : r.duplicate ? "text-faint text-sm" : "text-muted text-sm"}>
                       {!r.ok ? `error: ${r.error}` : r.duplicate ? "duplicate (skip)" : "import"}
+                      {r.loanMatch && (
+                        <span className="mt-1 block text-xs text-negative">
+                          Looks like a payment on {r.loanMatch.name}. Only the interest is
+                          deductible — record it from{" "}
+                          <a href={`/loans/${r.loanMatch.loanId}`} className="underline">the loan page</a>{" "}
+                          instead of importing it as one line.
+                        </span>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -124,7 +144,18 @@ export default async function ImportPage({ searchParams }: { searchParams: Promi
             <input type="hidden" name="descriptionCol" value={sp.descriptionCol} />
             <input type="hidden" name="categoryId" value={sp.categoryId} />
             <input type="hidden" name="propertyId" value={propertyId} />
-            <button type="submit" className="btn btn-primary">Import {importable} transaction(s)</button>
+            {loanMatchCount > 0 && (
+              <label className="mb-3 flex items-start gap-2 text-sm text-muted">
+                <input type="checkbox" name="includeLoanMatches" value="true" className="mt-0.5" />
+                <span>Import these anyway — I&apos;ll split them myself</span>
+              </label>
+            )}
+            <button type="submit" className="btn btn-primary">Import {importableExcludingMatches} transaction(s)</button>
+            {loanMatchCount > 0 && (
+              <p className="mt-2 text-xs text-faint">
+                {loanMatchCount} suspected loan payment(s) will be skipped unless you tick the box above.
+              </p>
+            )}
           </form>
         </section>
       </div>

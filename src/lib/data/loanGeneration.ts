@@ -1,0 +1,277 @@
+import "server-only";
+import type { Loan } from "@prisma/client";
+import { prisma } from "../db";
+import { recurringOccurrences, type OccurrenceRule } from "../recurring/occurrences";
+import { derivePayment, daysBetween, type LoanTerms } from "../loans/schedule";
+import { INTEREST_CATEGORY_NAME, CAPITAL_CATEGORY_NAME } from "../loans/categories";
+import { taxYearRange } from "../tax/taxYear";
+import { type LoanCandidate } from "../import/loanMatch";
+
+function toLoanOccurrenceRule(
+  loan: Pick<
+    Loan,
+    | "intervalUnit"
+    | "intervalCount"
+    | "dayOfWeek"
+    | "dayOfMonth"
+    | "monthOfYear"
+    | "startDate"
+    | "termEndDate"
+    | "lastGeneratedDate"
+  >,
+): OccurrenceRule {
+  return {
+    intervalUnit: loan.intervalUnit,
+    intervalCount: loan.intervalCount,
+    dayOfWeek: loan.dayOfWeek,
+    dayOfMonth: loan.dayOfMonth,
+    monthOfYear: loan.monthOfYear,
+    startDate: loan.startDate,
+    endDate: loan.termEndDate,
+    // A loan's startDate is the accrual ORIGIN, not a payment date: openingBalancePence is
+    // defined as the balance *as at* that date. recurringOccurrences() emits startDate itself
+    // when the schedule's day matches it (correct for a RecurringRule, where a rent rule
+    // starting on the 1st should pay on the 1st) — but for a loan that yields a phantom
+    // payment with zero elapsed days, zero interest and the whole amount as capital.
+    // Seeding lastGeneratedDate with startDate reuses that function's existing
+    // "skip anything on or before" rule to mean "first payment strictly after the origin".
+    lastGeneratedDate: loan.lastGeneratedDate ?? loan.startDate,
+  };
+}
+
+function termsOf(loan: Pick<Loan, "kind" | "annualRateBps" | "scheduledPaymentPence">): LoanTerms {
+  return {
+    kind: loan.kind,
+    annualRateBps: loan.annualRateBps,
+    scheduledPaymentPence: loan.scheduledPaymentPence,
+  };
+}
+
+async function loanCategoryIds(): Promise<{ interestId: string; capitalId: string }> {
+  const [interest, capital] = await Promise.all([
+    prisma.category.findUnique({ where: { name: INTEREST_CATEGORY_NAME } }),
+    prisma.category.findUnique({ where: { name: CAPITAL_CATEGORY_NAME } }),
+  ]);
+  if (!interest || !capital) {
+    throw new Error(
+      "Setup looks incomplete — the mortgage interest and capital repayment categories are missing. Re-run the database seed step.",
+    );
+  }
+  return { interestId: interest.id, capitalId: capital.id };
+}
+
+/**
+ * Generate LoanPayments and their transaction pairs up to `asOf`.
+ *
+ * Idempotent: `lastGeneratedDate` advances past each emitted date and
+ * `@@unique([loanId, date])` is the backstop, exactly as recurring rules work.
+ *
+ * Interest accrues from the previous payment date, or from `startDate` for the first
+ * payment. The first payment is the first scheduled date strictly *after* `startDate`, so
+ * it always has a non-zero accrual period — see `toLoanOccurrenceRule` for why.
+ */
+export async function generateLoanPayments(loanId: string, asOf: Date): Promise<number> {
+  const loan = await prisma.loan.findUnique({ where: { id: loanId } });
+  if (!loan || !loan.active) return 0;
+
+  const dates = recurringOccurrences(toLoanOccurrenceRule(loan), asOf);
+  if (dates.length === 0) return 0;
+
+  const { interestId, capitalId } = await loanCategoryIds();
+  const last = await prisma.loanPayment.findFirst({
+    where: { loanId },
+    orderBy: { date: "desc" },
+  });
+
+  let balance = last?.closingBalancePence ?? loan.openingBalancePence;
+  let boundary = last?.date ?? loan.startDate;
+  let created = 0;
+
+  for (const date of dates) {
+    if (balance <= 0) break;
+    const d = derivePayment({
+      terms: termsOf(loan),
+      openingBalancePence: balance,
+      daysInPeriod: daysBetween(boundary, date),
+      paidPence: loan.scheduledPaymentPence,
+    });
+
+    await prisma.$transaction(async (tx) => {
+      const payment = await tx.loanPayment.create({
+        data: {
+          loanId,
+          date,
+          openingBalancePence: d.openingBalancePence,
+          computedInterestPence: d.computedInterestPence,
+          paidPence: loan.scheduledPaymentPence,
+          closingBalancePence: d.closingBalancePence,
+        },
+      });
+      await tx.transaction.createMany({
+        data: buildPaymentTransactions(loan, payment.id, date, d.interestPence, d.capitalPence, interestId, capitalId),
+      });
+      await tx.loan.update({
+        where: { id: loanId },
+        data: { lastGeneratedDate: date, ...(d.fullyRedeemed ? { active: false } : {}) },
+      });
+    });
+
+    balance = d.closingBalancePence;
+    boundary = date;
+    created++;
+    if (d.fullyRedeemed) break;
+  }
+
+  return created;
+}
+
+/** The one or two ledger rows for a payment. Zero-value lines are omitted. */
+function buildPaymentTransactions(
+  loan: { propertyId: string; name: string },
+  loanPaymentId: string,
+  date: Date,
+  interestPence: number,
+  capitalPence: number,
+  interestId: string,
+  capitalId: string,
+) {
+  const rows: {
+    propertyId: string; categoryId: string; date: Date; amountPence: number;
+    direction: "out"; source: "recurring"; loanPaymentId: string; description: string;
+  }[] = [];
+  if (interestPence > 0) {
+    rows.push({
+      propertyId: loan.propertyId, categoryId: interestId, date, amountPence: interestPence,
+      direction: "out", source: "recurring", loanPaymentId, description: `${loan.name} — interest`,
+    });
+  }
+  if (capitalPence > 0) {
+    rows.push({
+      propertyId: loan.propertyId, categoryId: capitalId, date, amountPence: capitalPence,
+      direction: "out", source: "recurring", loanPaymentId, description: `${loan.name} — capital repayment`,
+    });
+  }
+  return rows;
+}
+
+/**
+ * Replace one payment's interest with the lender's actual figure, rewriting both ledger
+ * rows to match.
+ *
+ * Known limitation: later payments' opening balances are NOT recalculated, so overriding a
+ * mid-year payment leaves subsequent balances slightly stale. `applyYearVariance` targets
+ * the final payment of the year precisely to keep that contained.
+ */
+export async function setActualInterest(paymentId: string, actualInterestPence: number): Promise<void> {
+  const payment = await prisma.loanPayment.findUnique({
+    where: { id: paymentId },
+    include: { loan: true },
+  });
+  if (!payment) throw new Error("That payment could not be found.");
+
+  const d = derivePayment({
+    terms: termsOf(payment.loan),
+    openingBalancePence: payment.openingBalancePence,
+    daysInPeriod: 0, // irrelevant: the override supplies the interest
+    paidPence: payment.paidPence,
+    actualInterestPence,
+  });
+
+  const { interestId, capitalId } = await loanCategoryIds();
+
+  await prisma.$transaction(async (tx) => {
+    await tx.transaction.deleteMany({ where: { loanPaymentId: paymentId } });
+    await tx.transaction.createMany({
+      data: buildPaymentTransactions(
+        payment.loan, paymentId, payment.date,
+        d.interestPence, d.capitalPence, interestId, capitalId,
+      ),
+    });
+    await tx.loanPayment.update({
+      where: { id: paymentId },
+      data: { actualInterestPence, closingBalancePence: d.closingBalancePence },
+    });
+  });
+}
+
+export interface YearReconcile {
+  recordedInterestPence: number;
+  paymentCount: number;
+  lastPaymentId: string | null;
+}
+
+/** Total interest recorded for a tax year — the figure that reaches SA105 box 44. */
+export async function reconcileYear(loanId: string, taxYear: string): Promise<YearReconcile> {
+  const { start, end } = taxYearRange(taxYear);
+  const payments = await prisma.loanPayment.findMany({
+    where: { loanId, date: { gte: start, lt: end } },
+    orderBy: { date: "asc" },
+  });
+  return {
+    recordedInterestPence: payments.reduce(
+      (sum, p) => sum + (p.actualInterestPence ?? p.computedInterestPence),
+      0,
+    ),
+    paymentCount: payments.length,
+    lastPaymentId: payments.at(-1)?.id ?? null,
+  };
+}
+
+/**
+ * Make the year's recorded interest match the lender's annual statement exactly, by
+ * adjusting the final payment of the year. Box 44 then sits on the lender's number —
+ * the figure HMRC would check against.
+ */
+export async function applyYearVariance(
+  loanId: string,
+  taxYear: string,
+  statementInterestPence: number,
+): Promise<void> {
+  const { recordedInterestPence, lastPaymentId } = await reconcileYear(loanId, taxYear);
+  if (!lastPaymentId) throw new Error("No payments are recorded for that tax year.");
+  const delta = statementInterestPence - recordedInterestPence;
+  if (delta === 0) return;
+
+  const last = await prisma.loanPayment.findUnique({ where: { id: lastPaymentId } });
+  if (!last) throw new Error("That payment could not be found.");
+  const current = last.actualInterestPence ?? last.computedInterestPence;
+  // derivePayment throws if this pushes interest above the payment — surfaced to the user.
+  await setActualInterest(lastPaymentId, current + delta);
+}
+
+/**
+ * Active loans for a property with their scheduled payment dates, for the CSV-import
+ * matcher. Unlike generation this lists dates from the loan's origin regardless of what has
+ * already been recorded — a landlord importing a statement should still be warned about a
+ * row that duplicates a payment they entered by hand, because importing it as one line would
+ * file the whole amount as deductible.
+ */
+export async function loanPaymentCandidates(
+  propertyId: string,
+  asOf: Date,
+): Promise<LoanCandidate[]> {
+  const loans = await prisma.loan.findMany({ where: { propertyId, active: true } });
+  return loans.map((loan) => ({
+    loanId: loan.id,
+    name: loan.name,
+    scheduledPaymentPence: loan.scheduledPaymentPence,
+    scheduledDates: recurringOccurrences(
+      { ...toLoanOccurrenceRule(loan), lastGeneratedDate: loan.startDate },
+      asOf,
+    ),
+  }));
+}
+
+/** This tax year's capital repayments for a loan — money that attracted no relief. */
+export async function capitalNoReliefPence(loanId: string, taxYear: string): Promise<number> {
+  const { start, end } = taxYearRange(taxYear);
+  const rows = await prisma.transaction.findMany({
+    where: {
+      loanPayment: { loanId },
+      date: { gte: start, lt: end },
+      category: { name: CAPITAL_CATEGORY_NAME },
+    },
+    select: { amountPence: true },
+  });
+  return rows.reduce((sum, r) => sum + r.amountPence, 0);
+}

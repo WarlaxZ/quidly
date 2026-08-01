@@ -131,3 +131,10 @@ export function propertySurchargeBps(taxYear: string, region: Region): number {
 export function isProvisionalTaxYear(taxYear: string, region: Region): boolean {
   return getBands(taxYear, region).provisional ?? false;
 }
+
+/** The Section 24 finance-cost reducer: the property basic rate, i.e. 20% plus any
+ *  year/region surcharge. Kept here rather than at the call sites so a future change to
+ *  the base rate lands in one place. */
+export function propertyReducerBps(taxYear: string, region: Region): number {
+  return 2000 + propertySurchargeBps(taxYear, region);
+}

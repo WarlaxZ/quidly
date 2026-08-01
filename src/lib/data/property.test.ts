@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { getOrCreateDefaultProperty, updateProperty, createProperty, getProperty, getPropertyCounts, deletePropertyIfEmpty } from "./property";
 import { createTransaction } from "./transactions";
+import { createLoan } from "./loans";
 import { prisma } from "../db";
 import { resetDb } from "../../../test/setup/resetDb";
 
@@ -36,5 +37,23 @@ describe("property CRUD", () => {
     await expect(deletePropertyIfEmpty(p2.id)).rejects.toThrow();
     await deletePropertyIfEmpty(p.id);
     expect(await getProperty(p.id)).toBeNull();
+  });
+
+  it("refuses to delete a property that only has a loan (even with zero payments)", async () => {
+    const p = await createProperty({ name: "Mortgaged" });
+    await createLoan({
+      propertyId: p.id,
+      name: "Buy-to-let mortgage",
+      kind: "interestOnly",
+      openingBalancePence: 7_100_000,
+      annualRateBps: 270,
+      scheduledPaymentPence: 75_000,
+      intervalUnit: "MONTH",
+      intervalCount: 1,
+      startDate: new Date("2025-01-01"),
+    });
+    expect((await getPropertyCounts(p.id)).loans).toBe(1);
+    await expect(deletePropertyIfEmpty(p.id)).rejects.toThrow();
+    expect(await getProperty(p.id)).not.toBeNull();
   });
 });
