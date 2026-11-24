@@ -24,31 +24,34 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # Installs the pnpm version pinned by `packageManager` in package.json.
+      - uses: pnpm/action-setup@v4
+
       # Node 22 matches the Dockerfile's runtime, so CI fails on the same
       # things production does.
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-          cache: npm
+          cache: pnpm
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       # Prisma v7: the datasource URL comes from prisma.config.ts, and
       # migrations are hand-authored SQL applied with `migrate deploy`.
       - name: Generate Prisma client
-        run: npx prisma generate
+        run: pnpm exec prisma generate
 
       - name: Apply migrations
-        run: npx prisma migrate deploy
+        run: pnpm exec prisma migrate deploy
 
       - name: Test
-        run: npm test
+        run: pnpm test
 
       - name: Build
-        run: npm run build
+        run: pnpm run build
 
       # After `next build`, so the generated route types under .next/types are
       # on disk and get checked too.
       - name: Typecheck
-        run: npm run typecheck
+        run: pnpm run typecheck

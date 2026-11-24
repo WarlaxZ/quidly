@@ -9,9 +9,9 @@
 
 ## Checklist
 
-- [ ] `npm test` passes
-- [ ] `npm run typecheck` passes
-- [ ] `npm run build` passes
+- [ ] `pnpm test` passes
+- [ ] `pnpm run typecheck` passes
+- [ ] `pnpm run build` passes
 - [ ] Any money value added or changed is **integer pence**, not a float
 - [ ] Tax rates / bands / thresholds cite an HMRC source above, and have a test
       pinning the expected figure

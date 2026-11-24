@@ -139,16 +139,16 @@ at `localhost:3000`.
 ## Local development
 
 ```bash
-npm install
-npm run set-password            # paste the DEV (backslash-escaped) hash into .env
+pnpm install
+pnpm run set-password            # paste the DEV (backslash-escaped) hash into .env
 # .env also needs SESSION_SECRET=... (openssl rand -base64 32) and DATABASE_URL="file:./dev.db"
-npx prisma migrate deploy       # apply migrations (Prisma v7: hand-authored SQL)
-npx prisma db seed              # seed HMRC categories
-npm run dev                     # http://localhost:3000
+pnpm exec prisma migrate deploy       # apply migrations (Prisma v7: hand-authored SQL)
+pnpm exec prisma db seed              # seed HMRC categories
+pnpm run dev                     # http://localhost:3000
 
-npm test                        # vitest
-npm run typecheck               # tsc --noEmit
-npm run build                   # next build
+pnpm test                        # vitest
+pnpm run typecheck               # tsc --noEmit
+pnpm run build                   # next build
 ```
 
 Prisma v7 note: the datasource URL is configured in `prisma.config.ts` (read from
@@ -167,17 +167,17 @@ Akaunting database (`.sql`).
 
 ```bash
 # 1. Analyse the dump — loads it into a throwaway MariaDB and writes a review pack
-npm run migrate:akaunting:analyse -- ./akaunting-migration/dump.sql
+pnpm run migrate:akaunting:analyse ./akaunting-migration/dump.sql
 
 # 2. Review akaunting-migration/report.md (incl. "what's missing") and edit
 #    akaunting-migration/mapping.json — set a "target" for any unmapped category.
 
 # 3. Dry-run (writes nothing), then apply for real
-npm run migrate:akaunting:apply -- --dry-run
-npm run migrate:akaunting:apply
+pnpm run migrate:akaunting:apply --dry-run
+pnpm run migrate:akaunting:apply
 
 # Optional: also copy receipt files from Akaunting's storage folder
-npm run migrate:akaunting:apply -- --attachments-dir /path/to/akaunting/storage
+pnpm run migrate:akaunting:apply --attachments-dir /path/to/akaunting/storage
 ```
 
 Each Akaunting *company* becomes a Quidly *property*, categories are mapped onto
@@ -195,7 +195,7 @@ as they may contain financial data.
 
 | Variable | Required | Description |
 | --- | --- | --- |
-| `AUTH_USERNAME` | Yes | Login username. Generated together with the hash by `npm run set-password`. |
+| `AUTH_USERNAME` | Yes | Login username. Generated together with the hash by `pnpm run set-password`. |
 | `AUTH_PASSWORD_HASH` | Yes | argon2id password hash. Use the form matching your setup (dev / Docker-Compose / raw). |
 | `SESSION_SECRET` | Yes | Long random secret (32+ chars), e.g. `openssl rand -base64 32`. |
 | `DATABASE_URL` | Set by Docker | SQLite connection string. Dev default `file:./dev.db`; Docker sets `file:/data/quidly.db`. |

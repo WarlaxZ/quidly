@@ -39,8 +39,8 @@ body:
       options:
         - Docker (docker compose)
         - Docker (ghcr.io image)
-        - Local dev (npm run dev)
-        - Local production (npm run build && npm start)
+        - Local dev (pnpm run dev)
+        - Local production (pnpm run build && pnpm start)
         - Other
     validations:
       required: true
