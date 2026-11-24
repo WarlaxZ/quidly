@@ -23,20 +23,20 @@ here than velocity.
 ## Getting set up
 
 ```bash
-npm install
-npm run set-password            # paste the DEV (backslash-escaped) hash into .env
+pnpm install
+pnpm run set-password            # paste the DEV (backslash-escaped) hash into .env
 # .env also needs SESSION_SECRET=... (openssl rand -base64 32) and DATABASE_URL="file:./dev.db"
-npx prisma migrate deploy
-npx prisma db seed
-npm run dev                     # http://localhost:3000
+pnpm exec prisma migrate deploy
+pnpm exec prisma db seed
+pnpm run dev                     # http://localhost:3000
 ```
 
 ## Before you open a PR
 
 ```bash
-npm test          # vitest
-npm run typecheck # tsc --noEmit
-npm run build     # next build
+pnpm test          # vitest
+pnpm run typecheck # tsc --noEmit
+pnpm run build     # next build
 ```
 
 All three run in CI on every PR. Green locally means green there.
